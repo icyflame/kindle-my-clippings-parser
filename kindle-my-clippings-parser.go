@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 )
 
@@ -99,40 +101,67 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 	var output []Clipping
 
 	scanner := bufio.NewScanner(clippings)
-	lineType := LineType_Source
-	currentClipping := Clipping{}
+	scanner.Split(ScanUsingUTF8FEFFAsDelimiter)
+
+	// Initial character of Kindle's file is also a separator. So, we have to scan at least once to
+	// get rid of that section.
+	scanner.Scan()
 
 	for scanner.Scan() {
-		lineText := scanner.Text()
+		// lineText := scanner.Text()
+		// components := strings.SplitN(lineText, "\n", 4)
 
-		if lineText == KindleClippingsSeparator {
-			output = append(output, currentClipping)
-			currentClipping = Clipping{}
-			lineType = LineType_Source
-			continue
+		lineContent := scanner.Bytes()
+		components := bytes.SplitN(lineContent, []byte{'\n'}, 4)
+
+		if len(components) != 4 {
+			return nil, fmt.Errorf("incorrect clipping section found of length %d", len(lineContent))
 		}
 
-		switch lineType {
-		case LineType_Source:
-			fmt.Printf("found source line: %s\n", lineText)
-			lineType = LineType_Description
-		case LineType_Description:
-			fmt.Printf("found description line: %s\n", lineText)
-			lineType = LineType_Empty
-		case LineType_Empty:
-			lineType = LineType_Clipping
-		case LineType_Clipping:
-			fmt.Printf("found clipping line: %s\n", lineText)
-			// do not change lineType here
+		currentClipping := Clipping{}
+
+		lines := []struct {
+			lineType LineType
+			text     []byte
+		}{
+			{
+				lineType: LineType_Source,
+				// Each source line starts with 2 bytes which are there to denote the encoding of that
+				// particular clippings file.
+				text: components[0][2:],
+			},
 		}
+
+		for _, line := range lines {
+			err := k.Line(line.lineType, bytes.TrimSpace(line.text), &currentClipping)
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing a line > %w", err)
+			}
+		}
+
+		output = append(output, currentClipping)
 	}
-
-	fmt.Printf("reached end")
 
 	return output, nil
 }
 
-const KindleClippingsSeparator = "=========="
+// Line ...
+func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Clipping) error {
+	switch lineType {
+	case LineType_Source:
+		matches := KindleSource.FindSubmatchIndex(lineText)
+		if len(matches) != 6 {
+			return fmt.Errorf(`source line malformed: "%s"`, lineText)
+		}
+
+		clipping.Source = string(lineText[matches[2]:matches[3]])
+		clipping.Author = string(lineText[matches[4]:matches[5]])
+
+		return nil
+	}
+
+	return nil
+}
 
 type LineType int
 
@@ -143,3 +172,35 @@ const (
 	LineType_Empty
 	LineType_Clipping
 )
+
+var (
+	// KindleSource is a regular expression representing the first line of every Kindle highlight/note.
+	//
+	// Each source line is the starting of a "pseudo-file" and has
+	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) \((.+)\)$`)
+)
+
+// dropCR drops a terminal \r from the data.
+func dropCR(data []byte) []byte {
+	if len(data) > 0 && data[len(data)-1] == '\r' {
+		return data[0 : len(data)-1]
+	}
+	return data
+}
+
+// ScanUsingUTF8FEFFAsDelimiter is a special character that is used in Kindle's clippings files.
+func ScanUsingUTF8FEFFAsDelimiter(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexRune(data, 0xfeff); i >= 0 {
+		// We have a full newline-terminated line.
+		return i + 1, dropCR(data[0:i]), nil
+	}
+	// If we're at EOF, we have a final, non-terminated line. Return it.
+	if atEOF {
+		return len(data), dropCR(data), nil
+	}
+	// Request more data.
+	return 0, nil, nil
+}
