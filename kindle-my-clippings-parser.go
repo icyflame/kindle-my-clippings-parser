@@ -181,10 +181,12 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 		clipping.Source = string(lineText[matches[2]:matches[3]])
 		clipping.Author = string(lineText[matches[4]:matches[5]])
 	case LineType_Description:
-		for _, variation := range KindleDescriptionLineVariations {
+		var variationErrors []error
+		for variantNum, variation := range KindleDescriptionLineVariations {
 			matches := variation.Matcher.FindSubmatchIndex(lineText)
 			if len(matches) != variation.RequiredMatchCount {
-				return fmt.Errorf(`description line malformed: "%s"`, lineText)
+				variationErrors = append(variationErrors, fmt.Errorf(`description line malformed with variant %d: "%s"`, variantNum, lineText))
+				continue
 			}
 
 			clippingType := string(lineText[matches[variation.Type[0]]:matches[variation.Type[1]]])
@@ -224,6 +226,12 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 			if err != nil {
 				return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
 			}
+
+			break
+		}
+
+		if len(variationErrors) == len(KindleDescriptionLineVariations) {
+			return fmt.Errorf(`description malformed with all variants > %v`, variationErrors)
 		}
 
 	case LineType_Clipping:
@@ -257,16 +265,6 @@ var (
 	// Sample line:
 	// "Alias Grace (Atwood, Margaret)"
 	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) \((.+)\)$`)
-
-	// Sample line: Variation 1: Books with page numbers
-	// "- Your Highlight on page 373 | location 5709-5720 | Added on Sunday, 16 April 2023 10:13:54"
-	// "- Your Note on page 286 | location 4371 | Added on Saturday, 15 April 2023 12:51:43"
-	KindleDescriptionVariation1 regexp.Regexp = *regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`)
-
-	// Sample line: Variation 2: Books with out page numbers
-	// "- Your Highlight at location 9723-9727 | Added on Sunday, 2 January 2022 13:17:22"
-	// "- Your Note at location 9727 | Added on Sunday, 2 January 2022 13:17:46"
-	KindleDescriptionVariation2 regexp.Regexp = *regexp.MustCompile(`^- Your (.+?) at location (\d+)-?(\d+)? \| Added on (.+)$`)
 )
 
 type KindleDescriptionLineVariation struct {
@@ -281,6 +279,9 @@ type KindleDescriptionLineVariation struct {
 }
 
 var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleDescriptionLineVariation{
+	// Sample line: Variation 1: Books with page numbers
+	// "- Your Highlight on page 373 | location 5709-5720 | Added on Sunday, 16 April 2023 10:13:54"
+	// "- Your Note on page 286 | location 4371 | Added on Saturday, 15 April 2023 12:51:43"
 	{
 		Matcher:               regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
 		RequiredMatchCount:    12,
@@ -289,7 +290,20 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 		LocationInSourceStart: [2]int{6, 7},
 		LocationInSourceEnd:   [2]int{8, 9},
 		CreateTime:            [2]int{10, 11},
-		CreateTimeFormat:      "Monday, 2 Jan 2006 15:04:05",
+		CreateTimeFormat:      "Monday, 2 January 2006 15:04:05",
+	},
+	// Sample line: Variation 2: Books with out page numbers
+	// "- Your Highlight at location 9723-9727 | Added on Sunday, 2 January 2022 13:17:22"
+	// "- Your Note at location 9727 | Added on Sunday, 2 January 2022 13:17:46"
+	{
+		Matcher:               regexp.MustCompile(`^- Your (.+?) at location (\d+)-?(\d+)? \| Added on (.+)$`),
+		RequiredMatchCount:    10,
+		Type:                  [2]int{2, 3},
+		Page:                  [2]int{-1, -1},
+		LocationInSourceStart: [2]int{4, 5},
+		LocationInSourceEnd:   [2]int{6, 7},
+		CreateTime:            [2]int{8, 9},
+		CreateTimeFormat:      "Monday, 2 January 2006 15:04:05",
 	},
 }
 
