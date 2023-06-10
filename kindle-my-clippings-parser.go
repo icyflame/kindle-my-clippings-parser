@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -72,6 +73,7 @@ type Clipping struct {
 	Page             int
 	LocationInSource Location
 	CreateTime       time.Time
+	Text             string
 }
 
 type Clippings []Clipping
@@ -130,6 +132,14 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 				// particular clippings file.
 				text: components[0][2:],
 			},
+			{
+				lineType: LineType_Description,
+				text:     components[1],
+			},
+			{
+				lineType: LineType_Clipping,
+				text:     components[3],
+			},
 		}
 
 		for _, line := range lines {
@@ -156,12 +166,56 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 
 		clipping.Source = string(lineText[matches[2]:matches[3]])
 		clipping.Author = string(lineText[matches[4]:matches[5]])
+	case LineType_Description:
+		// In English
+		matches := KindleDescription.FindSubmatchIndex(lineText)
+		if len(matches) != 12 {
+			return fmt.Errorf(`description line malformed: "%s"`, lineText)
+		}
 
-		return nil
+		clippingType := string(lineText[matches[2]:matches[3]])
+		switch clippingType {
+		case "Highlight":
+			clipping.Type = ClippingType_Highlight
+		case "Note":
+			clipping.Type = ClippingType_Note
+		}
+
+		var err error
+		clipping.Page, err = strconv.Atoi(string(lineText[matches[4]:matches[5]]))
+		if err != nil {
+			return fmt.Errorf(`description line > page number could not be parsed from the line: "%s" > %w`, lineText, err)
+		}
+
+		fmt.Printf("%#v\n", matches)
+		fmt.Printf("%s\n", lineText)
+
+		clipping.LocationInSource.Start, err = strconv.Atoi(string(lineText[matches[6]:matches[7]]))
+		if err != nil {
+			return fmt.Errorf(`description line > start location could not be parsed from the line: "%s" > %w`, lineText, err)
+		}
+
+		if matches[8] != -1 {
+			clipping.LocationInSource.End, err = strconv.Atoi(string(lineText[matches[8]:matches[9]]))
+			if err != nil {
+				return fmt.Errorf(`description line > end location could not be parsed from the line: "%s" > %w`, lineText, err)
+			}
+		}
+
+	case LineType_Clipping:
+		clipping.Text = string(bytes.TrimSpace(
+			bytes.TrimSuffix(
+				lineText,
+				[]byte(KindleClippingsSeparator),
+			),
+		),
+		)
 	}
 
 	return nil
 }
+
+const KindleClippingsSeparator = "=========="
 
 type LineType int
 
@@ -176,8 +230,14 @@ const (
 var (
 	// KindleSource is a regular expression representing the first line of every Kindle highlight/note.
 	//
-	// Each source line is the starting of a "pseudo-file" and has
+	// Sample line:
+	// "Alias Grace (Atwood, Margaret)"
 	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) \((.+)\)$`)
+
+	// Sample line:
+	// "- Your Highlight on page 373 | location 5709-5720 | Added on Sunday, 16 April 2023 10:13:54"
+	// "- Your Note on page 286 | location 4371 | Added on Saturday, 15 April 2023 12:51:43"
+	KindleDescription regexp.Regexp = *regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`)
 )
 
 // dropCR drops a terminal \r from the data.
