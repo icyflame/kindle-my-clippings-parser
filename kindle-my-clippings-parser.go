@@ -305,6 +305,19 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 		CreateTime:            [2]int{8, 9},
 		CreateTimeFormat:      "Monday, 2 January 2006 15:04:05",
 	},
+	// Sample line: Variation 3: Japanese
+	// "- 22ページ|位置No. 336のメモ |作成日: 2023年6月10日土曜日 9:18:40"
+	// "- 7ページ|位置No. 96-96のハイライト |作成日: 2023年5月14日日曜日 11:31:52"
+	{
+		Matcher:               regexp.MustCompile(`- (\d+)ページ|位置No. (\d+)-?(\d+)?の(.+) |作成日: (.+)`),
+		RequiredMatchCount:    12,
+		Type:                  [2]int{8, 9},
+		Page:                  [2]int{2, 3},
+		LocationInSourceStart: [2]int{4, 5},
+		LocationInSourceEnd:   [2]int{6, 7},
+		CreateTime:            [2]int{10, 11},
+		CreateTimeFormat:      "2006年1月02日月曜日 15:04:05",
+	},
 }
 
 // dropCR drops a terminal \r from the data.
