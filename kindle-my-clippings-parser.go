@@ -181,45 +181,46 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 		clipping.Source = string(lineText[matches[2]:matches[3]])
 		clipping.Author = string(lineText[matches[4]:matches[5]])
 	case LineType_Description:
-		// In English
-		matches := KindleDescription.FindSubmatchIndex(lineText)
-		if len(matches) != 12 {
-			return fmt.Errorf(`description line malformed: "%s"`, lineText)
-		}
-
-		clippingType := string(lineText[matches[2]:matches[3]])
-		switch clippingType {
-		case "Highlight":
-			clipping.Type = ClippingType_Highlight
-		case "Note":
-			clipping.Type = ClippingType_Note
-		}
-
-		var err error
-		clipping.Page, err = strconv.Atoi(string(lineText[matches[4]:matches[5]]))
-		if err != nil {
-			return fmt.Errorf(`description line > page number could not be parsed from the line: "%s" > %w`, lineText, err)
-		}
-
-		fmt.Printf("%#v\n", matches)
-		fmt.Printf("%s\n", lineText)
-
-		clipping.LocationInSource.Start, err = strconv.Atoi(string(lineText[matches[6]:matches[7]]))
-		if err != nil {
-			return fmt.Errorf(`description line > start location could not be parsed from the line: "%s" > %w`, lineText, err)
-		}
-
-		if matches[8] != -1 {
-			clipping.LocationInSource.End, err = strconv.Atoi(string(lineText[matches[8]:matches[9]]))
-			if err != nil {
-				return fmt.Errorf(`description line > end location could not be parsed from the line: "%s" > %w`, lineText, err)
+		for _, variation := range KindleDescriptionLineVariations {
+			matches := variation.Matcher.FindSubmatchIndex(lineText)
+			if len(matches) != variation.RequiredMatchCount {
+				return fmt.Errorf(`description line malformed: "%s"`, lineText)
 			}
-		}
 
-		creationTime := lineText[matches[10]:matches[11]]
-		clipping.CreateTime, err = time.ParseInLocation("Monday, 2 Jan 2006 15:04:05", string(creationTime), time.Local)
-		if err != nil {
-			return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
+			clippingType := string(lineText[matches[2]:matches[3]])
+			switch clippingType {
+			case "Highlight":
+				clipping.Type = ClippingType_Highlight
+			case "Note":
+				clipping.Type = ClippingType_Note
+			}
+
+			var err error
+			clipping.Page, err = strconv.Atoi(string(lineText[matches[4]:matches[5]]))
+			if err != nil {
+				return fmt.Errorf(`description line > page number could not be parsed from the line: "%s" > %w`, lineText, err)
+			}
+
+			fmt.Printf("%#v\n", matches)
+			fmt.Printf("%s\n", lineText)
+
+			clipping.LocationInSource.Start, err = strconv.Atoi(string(lineText[matches[6]:matches[7]]))
+			if err != nil {
+				return fmt.Errorf(`description line > start location could not be parsed from the line: "%s" > %w`, lineText, err)
+			}
+
+			if matches[8] != -1 {
+				clipping.LocationInSource.End, err = strconv.Atoi(string(lineText[matches[8]:matches[9]]))
+				if err != nil {
+					return fmt.Errorf(`description line > end location could not be parsed from the line: "%s" > %w`, lineText, err)
+				}
+			}
+
+			creationTime := lineText[matches[10]:matches[11]]
+			clipping.CreateTime, err = time.ParseInLocation("Monday, 2 Jan 2006 15:04:05", string(creationTime), time.Local)
+			if err != nil {
+				return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
+			}
 		}
 
 	case LineType_Clipping:
@@ -254,11 +255,28 @@ var (
 	// "Alias Grace (Atwood, Margaret)"
 	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) \((.+)\)$`)
 
-	// Sample line:
+	// Sample line: Variation 1: Books with page numbers
 	// "- Your Highlight on page 373 | location 5709-5720 | Added on Sunday, 16 April 2023 10:13:54"
 	// "- Your Note on page 286 | location 4371 | Added on Saturday, 15 April 2023 12:51:43"
-	KindleDescription regexp.Regexp = *regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`)
+	KindleDescriptionVariation1 regexp.Regexp = *regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`)
+
+	// Sample line: Variation 2: Books with out page numbers
+	// "- Your Highlight at location 9723-9727 | Added on Sunday, 2 January 2022 13:17:22"
+	// "- Your Note at location 9727 | Added on Sunday, 2 January 2022 13:17:46"
+	KindleDescriptionVariation2 regexp.Regexp = *regexp.MustCompile(`^- Your (.+?) at location (\d+)-?(\d+)? \| Added on (.+)$`)
 )
+
+type KindleDescriptionLineVariation struct {
+	Matcher            *regexp.Regexp
+	RequiredMatchCount int
+}
+
+var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleDescriptionLineVariation{
+	{
+		Matcher:            regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
+		RequiredMatchCount: 12,
+	},
+}
 
 // dropCR drops a terminal \r from the data.
 func dropCR(data []byte) []byte {
