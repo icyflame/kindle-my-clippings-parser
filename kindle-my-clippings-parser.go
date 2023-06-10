@@ -187,7 +187,7 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 				return fmt.Errorf(`description line malformed: "%s"`, lineText)
 			}
 
-			clippingType := string(lineText[matches[2]:matches[3]])
+			clippingType := string(lineText[matches[variation.Type[0]]:matches[variation.Type[1]]])
 			switch clippingType {
 			case "Highlight":
 				clipping.Type = ClippingType_Highlight
@@ -195,29 +195,32 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 				clipping.Type = ClippingType_Note
 			}
 
-			var err error
-			clipping.Page, err = strconv.Atoi(string(lineText[matches[4]:matches[5]]))
-			if err != nil {
-				return fmt.Errorf(`description line > page number could not be parsed from the line: "%s" > %w`, lineText, err)
-			}
-
 			fmt.Printf("%#v\n", matches)
 			fmt.Printf("%s\n", lineText)
 
-			clipping.LocationInSource.Start, err = strconv.Atoi(string(lineText[matches[6]:matches[7]]))
+			var err error
+
+			if variation.Page[0] != -1 {
+				clipping.Page, err = strconv.Atoi(string(lineText[matches[variation.Page[0]]:matches[variation.Page[1]]]))
+				if err != nil {
+					return fmt.Errorf(`description line > page number could not be parsed from the line: "%s" > %w`, lineText, err)
+				}
+			}
+
+			clipping.LocationInSource.Start, err = strconv.Atoi(string(lineText[matches[variation.LocationInSourceStart[0]]:matches[variation.LocationInSourceStart[1]]]))
 			if err != nil {
 				return fmt.Errorf(`description line > start location could not be parsed from the line: "%s" > %w`, lineText, err)
 			}
 
-			if matches[8] != -1 {
-				clipping.LocationInSource.End, err = strconv.Atoi(string(lineText[matches[8]:matches[9]]))
+			if matches[variation.LocationInSourceEnd[0]] != -1 {
+				clipping.LocationInSource.End, err = strconv.Atoi(string(lineText[matches[variation.LocationInSourceEnd[0]]:matches[variation.LocationInSourceEnd[1]]]))
 				if err != nil {
 					return fmt.Errorf(`description line > end location could not be parsed from the line: "%s" > %w`, lineText, err)
 				}
 			}
 
-			creationTime := lineText[matches[10]:matches[11]]
-			clipping.CreateTime, err = time.ParseInLocation("Monday, 2 Jan 2006 15:04:05", string(creationTime), time.Local)
+			creationTime := lineText[matches[variation.CreateTime[0]]:matches[variation.CreateTime[1]]]
+			clipping.CreateTime, err = time.ParseInLocation(variation.CreateTimeFormat, string(creationTime), time.Local)
 			if err != nil {
 				return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
 			}
@@ -267,14 +270,26 @@ var (
 )
 
 type KindleDescriptionLineVariation struct {
-	Matcher            *regexp.Regexp
-	RequiredMatchCount int
+	Matcher               *regexp.Regexp
+	RequiredMatchCount    int
+	Type                  [2]int
+	Page                  [2]int
+	LocationInSourceStart [2]int
+	LocationInSourceEnd   [2]int
+	CreateTime            [2]int
+	CreateTimeFormat      string
 }
 
 var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleDescriptionLineVariation{
 	{
-		Matcher:            regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
-		RequiredMatchCount: 12,
+		Matcher:               regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
+		RequiredMatchCount:    12,
+		Type:                  [2]int{2, 3},
+		Page:                  [2]int{4, 5},
+		LocationInSourceStart: [2]int{6, 7},
+		LocationInSourceEnd:   [2]int{8, 9},
+		CreateTime:            [2]int{10, 11},
+		CreateTimeFormat:      "Monday, 2 Jan 2006 15:04:05",
 	},
 }
 
