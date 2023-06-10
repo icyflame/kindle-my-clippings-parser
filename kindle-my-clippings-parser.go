@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -50,12 +52,24 @@ func _main() error {
 	}
 	fmt.Printf("Clippings output:\n\n%#v", clippings)
 
+	outputFile, err := os.Create("parsed-clippings.yaml")
+	if err != nil {
+		return fmt.Errorf("could not create output yaml file > %w", err)
+	}
+	defer outputFile.Close()
+
+	writer := yaml.NewEncoder(outputFile)
+	defer writer.Close()
+	if err := writer.Encode(clippings); err != nil {
+		return fmt.Errorf("could not encode parsed clippings into YAML > %w", err)
+	}
+
 	return nil
 }
 
 type Location struct {
-	Start int
-	End   int
+	Start int `yaml:",omitempty"`
+	End   int `yaml:",omitempty"`
 }
 
 type ClippingType int
@@ -67,13 +81,13 @@ const (
 )
 
 type Clipping struct {
-	Source           string
-	Author           string
-	Type             ClippingType
-	Page             int
-	LocationInSource Location
-	CreateTime       time.Time
-	Text             string
+	Source           string       `yaml:"source"`
+	Author           string       `yaml:"author"`
+	Type             ClippingType `yaml:"type"`
+	Page             int          `yaml:"page"`
+	LocationInSource Location     `yaml:"location_in_source"`
+	CreateTime       time.Time    `yaml:"create_time"`
+	Text             string       `yaml:"text"`
 }
 
 type Clippings []Clipping
