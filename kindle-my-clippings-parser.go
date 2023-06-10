@@ -202,6 +202,12 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 			}
 		}
 
+		creationTime := lineText[matches[10]:matches[11]]
+		clipping.CreateTime, err = time.ParseInLocation("Monday, 2 Jan 2006 15:04:05", string(creationTime), time.Local)
+		if err != nil {
+			return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
+		}
+
 	case LineType_Clipping:
 		clipping.Text = string(bytes.TrimSpace(
 			bytes.TrimSuffix(
