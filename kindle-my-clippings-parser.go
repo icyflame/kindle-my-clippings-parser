@@ -144,7 +144,7 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 				lineType: LineType_Source,
 				// Each source line starts with 2 bytes which are there to denote the encoding of that
 				// particular clippings file.
-				text: components[0][2:],
+				text: components[0],
 			},
 			{
 				lineType: LineType_Description,
@@ -249,6 +249,8 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 
 const KindleClippingsSeparator = "=========="
 
+var KindleClippingsSeparatorMatcher *regexp.Regexp = regexp.MustCompile(`={10}`)
+
 type LineType int
 
 const (
@@ -320,27 +322,40 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 	},
 }
 
-// dropCR drops a terminal \r from the data.
-func dropCR(data []byte) []byte {
-	if len(data) > 0 && data[len(data)-1] == '\r' {
-		return data[0 : len(data)-1]
-	}
-	return data
-}
-
 // ScanUsingUTF8FEFFAsDelimiter is a special character that is used in Kindle's clippings files.
 func ScanUsingUTF8FEFFAsDelimiter(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	// fmt.Printf("given data of length %d (at EOF: %v): %s\n", len(data), atEOF, string(data))
+	// Nothing to read, so just end this.
 	if atEOF && len(data) == 0 {
+		// fmt.Println("---")
+		// fmt.Printf("Scan: at eof and no data")
 		return 0, nil, nil
 	}
-	if i := bytes.IndexRune(data, 0xfeff); i >= 0 {
-		// We have a full newline-terminated line.
-		return i + 1, dropCR(data[0:i]), nil
+
+	// Look for the separator
+	if loc := KindleClippingsSeparatorMatcher.FindIndex(data); loc != nil {
+		// fmt.Println("---")
+		// fmt.Println("Scan: ", len(data), loc[1]+2, len(data[:loc[0]]))
+		return loc[1], data[:loc[0]], nil
 	}
-	// If we're at EOF, we have a final, non-terminated line. Return it.
+
+	// If we're at EOF and we still did not find the separator, then we don't have anything to
+	// return
 	if atEOF {
-		return len(data), dropCR(data), nil
+		// fmt.Println("---")
+		// fmt.Println("Scan: at eof and returning remaining data: ", len(data))
+		return len(data), data, nil
 	}
-	// Request more data.
+
+	// We are not at EOF and we don't see a separator either
 	return 0, nil, nil
+}
+
+// IsException ...
+func (k *KindleClippings) IsException(comps [][]byte) bool {
+	if len(comps) == 2 && bytes.HasPrefix(comps[1], []byte("- Your Bookmark")) {
+		return true
+	}
+
+	return false
 }
