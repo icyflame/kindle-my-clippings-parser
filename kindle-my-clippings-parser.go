@@ -9,7 +9,9 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"gopkg.in/yaml.v3"
 )
@@ -50,7 +52,7 @@ func _main() error {
 	if err != nil {
 		return fmt.Errorf("error while parsing clippings file > %w", err)
 	}
-	fmt.Printf("Clippings output:\n\n%#v", clippings)
+	// fmt.Printf("Clippings output:\n\n%#v", clippings)
 
 	outputFile, err := os.Create("parsed-clippings.yaml")
 	if err != nil {
@@ -81,13 +83,16 @@ const (
 )
 
 type Clipping struct {
-	Source           string       `yaml:"source"`
-	Author           string       `yaml:"author"`
-	Type             ClippingType `yaml:"type"`
-	Page             int          `yaml:"page"`
-	LocationInSource Location     `yaml:"location_in_source"`
-	CreateTime       time.Time    `yaml:"create_time"`
-	Text             string       `yaml:"text"`
+	Source string       `yaml:"source"`
+	Author string       `yaml:"author"`
+	Type   ClippingType `yaml:"type"`
+
+	// Page is not always a number. Sometimes it is a lowercase Roman numeral "ix"
+	Page string `yaml:"page"`
+
+	LocationInSource Location  `yaml:"location_in_source"`
+	CreateTime       time.Time `yaml:"create_time"`
+	Text             string    `yaml:"text"`
 }
 
 type Clippings []Clipping
@@ -102,6 +107,7 @@ type KindleClippings struct {
 
 // Alias Grace (Atwood, Margaret)
 // - Your Highlight on page 22 | location 281-283 | Added on Sunday, 5 May 2019 10:23:20
+// - Your Highlight on page ix | location 341-344 | Added on Saturday, 25 January 2020 10:47:54
 
 // They were bell-shaped and ruffled, gracefully waving and lovely under the sea; but if they washed up on the beach and dried out in the sun there was nothing left of them. And that is what the ladies are like: mostly water.
 // ^^ this can be multiline
@@ -128,10 +134,15 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 		// components := strings.SplitN(lineText, "\n", 4)
 
 		lineContent := scanner.Bytes()
+		lineContent = bytes.TrimSpace(lineContent)
 		components := bytes.SplitN(lineContent, []byte{'\n'}, 4)
 
+		if k.IsException(components) {
+			continue
+		}
+
 		if len(components) != 4 {
-			return nil, fmt.Errorf("incorrect clipping section found of length %d", len(lineContent))
+			return nil, fmt.Errorf("incorrect clipping section found of length %d: %s", len(lineContent), string(lineContent))
 		}
 
 		currentClipping := Clipping{}
@@ -178,7 +189,11 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 			return fmt.Errorf(`source line malformed: "%s"`, lineText)
 		}
 
-		clipping.Source = string(lineText[matches[2]:matches[3]])
+		notPrint := func(r rune) bool {
+			return !unicode.IsPrint(r)
+		}
+
+		clipping.Source = strings.TrimFunc(string(lineText[matches[2]:matches[3]]), notPrint)
 		clipping.Author = string(lineText[matches[4]:matches[5]])
 	case LineType_Description:
 		var variationErrors []error
@@ -197,16 +212,13 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 				clipping.Type = ClippingType_Note
 			}
 
-			fmt.Printf("%#v\n", matches)
-			fmt.Printf("%s\n", lineText)
+			// fmt.Printf("%#v\n", matches)
+			// fmt.Printf("%s\n", lineText)
 
 			var err error
 
 			if variation.Page[0] != -1 {
-				clipping.Page, err = strconv.Atoi(string(lineText[matches[variation.Page[0]]:matches[variation.Page[1]]]))
-				if err != nil {
-					return fmt.Errorf(`description line > page number could not be parsed from the line: "%s" > %w`, lineText, err)
-				}
+				clipping.Page = string(lineText[matches[variation.Page[0]]:matches[variation.Page[1]]])
 			}
 
 			clipping.LocationInSource.Start, err = strconv.Atoi(string(lineText[matches[variation.LocationInSourceStart[0]]:matches[variation.LocationInSourceStart[1]]]))
@@ -266,7 +278,7 @@ var (
 	//
 	// Sample line:
 	// "Alias Grace (Atwood, Margaret)"
-	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) \((.+)\)$`)
+	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) \((.+)\)?$`)
 )
 
 type KindleDescriptionLineVariation struct {
@@ -285,7 +297,7 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 	// "- Your Highlight on page 373 | location 5709-5720 | Added on Sunday, 16 April 2023 10:13:54"
 	// "- Your Note on page 286 | location 4371 | Added on Saturday, 15 April 2023 12:51:43"
 	{
-		Matcher:               regexp.MustCompile(`^- Your (.+?) on page (\d+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
+		Matcher:               regexp.MustCompile(`^- Your (.+?) on page ([ivx0-9]+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
 		RequiredMatchCount:    12,
 		Type:                  [2]int{2, 3},
 		Page:                  [2]int{4, 5},
@@ -311,7 +323,7 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 	// "- 22ページ|位置No. 336のメモ |作成日: 2023年6月10日土曜日 9:18:40"
 	// "- 7ページ|位置No. 96-96のハイライト |作成日: 2023年5月14日日曜日 11:31:52"
 	{
-		Matcher:               regexp.MustCompile(`- (\d+)ページ|位置No. (\d+)-?(\d+)?の(.+) |作成日: (.+)`),
+		Matcher:               regexp.MustCompile(`- (\d+)ページ|位置No. ([ivx0-9]+)-?(\d+)?の(.+) |作成日: (.+)`),
 		RequiredMatchCount:    12,
 		Type:                  [2]int{8, 9},
 		Page:                  [2]int{2, 3},
