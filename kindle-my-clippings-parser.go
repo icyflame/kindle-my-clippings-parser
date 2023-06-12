@@ -52,7 +52,7 @@ func _main() error {
 	if err != nil {
 		return fmt.Errorf("error while parsing clippings file > %w", err)
 	}
-	// fmt.Printf("Clippings output:\n\n%#v", clippings)
+	fmt.Printf("Read %d clippings from file", len(clippings))
 
 	outputFile, err := os.Create("parsed-clippings.yaml")
 	if err != nil {
@@ -142,7 +142,6 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 		}
 
 		if len(lineContent) == 0 {
-			fmt.Println("clipping of length 0 found")
 			continue
 		}
 
@@ -206,6 +205,8 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 		var variationErrors []error
 		for variantNum, variation := range KindleDescriptionLineVariations {
 			matches := variation.Matcher.FindSubmatchIndex(lineText)
+			// fmt.Printf("description: %#v\n", matches)
+			// fmt.Printf("description: %s\n", string(lineText))
 			if len(matches) != variation.RequiredMatchCount {
 				variationErrors = append(variationErrors, fmt.Errorf(`description line malformed with variant %d: "%s"`, variantNum, lineText))
 				continue
@@ -218,9 +219,6 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 			case "Note", "メモ":
 				clipping.Type = ClippingType_Note
 			}
-
-			// fmt.Printf("%#v\n", matches)
-			// fmt.Printf("%s\n", lineText)
 
 			var err error
 
