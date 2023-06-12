@@ -208,9 +208,9 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 
 			clippingType := string(lineText[matches[variation.Type[0]]:matches[variation.Type[1]]])
 			switch clippingType {
-			case "Highlight":
+			case "Highlight", "ハイライト":
 				clipping.Type = ClippingType_Highlight
-			case "Note":
+			case "Note", "メモ":
 				clipping.Type = ClippingType_Note
 			}
 
@@ -324,15 +324,17 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 	// Sample line: Variation 3: Japanese
 	// "- 22ページ|位置No. 336のメモ |作成日: 2023年6月10日土曜日 9:18:40"
 	// "- 7ページ|位置No. 96-96のハイライト |作成日: 2023年5月14日日曜日 11:31:52"
+	// "- 1ページ|位置No. 5-5のハイライト |作成日: 2023年5月13日土曜日 19:47:14"
 	{
-		Matcher:               regexp.MustCompile(`- (\d+)ページ|位置No. ([ivx0-9]+)-?(\d+)?の(.+) |作成日: (.+)`),
+		Matcher:               regexp.MustCompile(`- (\d+)ページ\|位置No. (\d+)-?(\d+)?の(.+) \|作成日: (.+)`),
 		RequiredMatchCount:    12,
 		Type:                  [2]int{8, 9},
 		Page:                  [2]int{2, 3},
 		LocationInSourceStart: [2]int{4, 5},
 		LocationInSourceEnd:   [2]int{6, 7},
-		CreateTime:            [2]int{10, 11},
-		CreateTimeFormat:      "2006年1月02日月曜日 15:04:05",
+		CreateTime:            [2]int{-1, -1},
+		// CreateTime:       [2]int{10, 11},
+		CreateTimeFormat: "2006年1月2日",
 	},
 }
 
@@ -367,7 +369,9 @@ func ScanUsingUTF8FEFFAsDelimiter(data []byte, atEOF bool) (advance int, token [
 
 // IsException ...
 func (k *KindleClippings) IsException(comps [][]byte) bool {
-	if len(comps) == 2 && bytes.HasPrefix(comps[1], []byte("- Your Bookmark")) {
+	if len(comps) == 2 &&
+		(bytes.HasPrefix(comps[1], []byte("- Your Bookmark")) ||
+			strings.Contains(string(comps[1]), `ブックマーク`)) {
 		return true
 	}
 
