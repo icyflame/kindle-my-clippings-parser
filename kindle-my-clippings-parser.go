@@ -243,18 +243,24 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 			if variation.CreateTime[0] != -1 {
 				// creationTime = 2023年5月15日月曜日 20:45:04
 				creationTime := lineText[matches[variation.CreateTime[0]]:matches[variation.CreateTime[1]]]
-				// dateDay = 2023年5月15日月曜日
-				dateDay, _, _ := bytes.Cut(creationTime, []byte(" "))
+				timeToParse := creationTime
 
-				// We need to remove the last three runes. Not the last three bytes.
-				// dateOnly = 2023年5月15日
-				dateDayAsRunes := bytes.Runes(dateDay)
-				var dateOnly string
-				for _, v := range dateDayAsRunes[:len(dateDayAsRunes)-3] {
-					dateOnly += string(v)
+				if variantNum == int(Variant_Japanese) {
+					// dateDay = 2023年5月15日月曜日
+					dateDay, _, _ := bytes.Cut(creationTime, []byte(" "))
+
+					// We need to remove the last three runes. Not the last three bytes.
+					// dateOnly = 2023年5月15日
+					dateDayAsRunes := bytes.Runes(dateDay)
+					var dateOnly string
+					for _, v := range dateDayAsRunes[:len(dateDayAsRunes)-3] {
+						dateOnly += string(v)
+					}
+
+					timeToParse = []byte(dateOnly)
 				}
 
-				clipping.CreateTime, err = time.ParseInLocation(variation.CreateTimeFormat, dateOnly, time.Local)
+				clipping.CreateTime, err = time.ParseInLocation(variation.CreateTimeFormat, string(timeToParse), time.Local)
 				if err != nil {
 					return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
 				}
@@ -312,6 +318,14 @@ type KindleDescriptionLineVariation struct {
 	CreateTime            [2]int
 	CreateTimeFormat      string
 }
+
+type Variant int
+
+const (
+	Variant_English_BooksWithPageNum Variant = iota
+	Variant_English_BooksWithoutPageNum
+	Variant_Japanese
+)
 
 var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleDescriptionLineVariation{
 	// Sample line: Variation 1: Books with page numbers
