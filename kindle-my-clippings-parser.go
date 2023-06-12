@@ -236,8 +236,20 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 			}
 
 			if variation.CreateTime[0] != -1 {
+				// creationTime = 2023年5月15日月曜日 20:45:04
 				creationTime := lineText[matches[variation.CreateTime[0]]:matches[variation.CreateTime[1]]]
-				clipping.CreateTime, err = time.ParseInLocation(variation.CreateTimeFormat, string(creationTime), time.Local)
+				// dateDay = 2023年5月15日月曜日
+				dateDay, _, _ := bytes.Cut(creationTime, []byte(" "))
+
+				// We need to remove the last three runes. Not the last three bytes.
+				// dateOnly = 2023年5月15日
+				dateDayAsRunes := bytes.Runes(dateDay)
+				var dateOnly string
+				for _, v := range dateDayAsRunes[:len(dateDayAsRunes)-3] {
+					dateOnly += string(v)
+				}
+
+				clipping.CreateTime, err = time.ParseInLocation(variation.CreateTimeFormat, dateOnly, time.Local)
 				if err != nil {
 					return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
 				}
@@ -334,9 +346,8 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 		Page:                  [2]int{2, 3},
 		LocationInSourceStart: [2]int{4, 5},
 		LocationInSourceEnd:   [2]int{6, 7},
-		CreateTime:            [2]int{-1, -1},
-		// CreateTime:       [2]int{10, 11},
-		CreateTimeFormat: "2006年1月2日",
+		CreateTime:            [2]int{10, 11},
+		CreateTimeFormat:      "2006年1月2日",
 	},
 }
 
