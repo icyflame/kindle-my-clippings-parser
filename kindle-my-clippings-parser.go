@@ -194,7 +194,9 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 		}
 
 		clipping.Source = strings.TrimFunc(string(lineText[matches[2]:matches[3]]), notPrint)
-		clipping.Author = string(lineText[matches[4]:matches[5]])
+		if matches[4] != -1 {
+			clipping.Author = string(lineText[matches[4]:matches[5]])
+		}
 	case LineType_Description:
 		var variationErrors []error
 		for variantNum, variation := range KindleDescriptionLineVariations {
@@ -278,7 +280,7 @@ var (
 	//
 	// Sample line:
 	// "Alias Grace (Atwood, Margaret)"
-	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) \((.+)\)?$`)
+	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) ?\(?(.+)?\)?$`)
 )
 
 type KindleDescriptionLineVariation struct {
