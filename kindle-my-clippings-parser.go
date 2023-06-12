@@ -141,6 +141,11 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 			continue
 		}
 
+		if len(lineContent) == 0 {
+			fmt.Println("clipping of length 0 found")
+			continue
+		}
+
 		if len(components) != 4 {
 			return nil, fmt.Errorf("incorrect clipping section found of length %d: %s", len(lineContent), string(lineContent))
 		}
