@@ -235,10 +235,12 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 				}
 			}
 
-			creationTime := lineText[matches[variation.CreateTime[0]]:matches[variation.CreateTime[1]]]
-			clipping.CreateTime, err = time.ParseInLocation(variation.CreateTimeFormat, string(creationTime), time.Local)
-			if err != nil {
-				return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
+			if variation.CreateTime[0] != -1 {
+				creationTime := lineText[matches[variation.CreateTime[0]]:matches[variation.CreateTime[1]]]
+				clipping.CreateTime, err = time.ParseInLocation(variation.CreateTimeFormat, string(creationTime), time.Local)
+				if err != nil {
+					return fmt.Errorf(`description line > creation time could not be parsed from the line: "%s" > %w`, lineText, err)
+				}
 			}
 
 			break
