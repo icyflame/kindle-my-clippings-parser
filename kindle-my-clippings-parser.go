@@ -84,7 +84,6 @@ const (
 
 type Clipping struct {
 	Source string       `yaml:"source"`
-	Author string       `yaml:"author"`
 	Type   ClippingType `yaml:"type"`
 
 	// Page is not always a number. Sometimes it is a lowercase Roman numeral "ix"
@@ -188,19 +187,11 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Clipping) error {
 	switch lineType {
 	case LineType_Source:
-		matches := KindleSource.FindSubmatchIndex(lineText)
-		if len(matches) != 6 {
-			return fmt.Errorf(`source line malformed: "%s"`, lineText)
-		}
-
 		notPrint := func(r rune) bool {
 			return !unicode.IsPrint(r)
 		}
 
-		clipping.Source = strings.TrimFunc(string(lineText[matches[2]:matches[3]]), notPrint)
-		if matches[4] != -1 {
-			clipping.Author = string(lineText[matches[4]:matches[5]])
-		}
+		clipping.Source = strings.TrimFunc(string(lineText), notPrint)
 	case LineType_Description:
 		var variationErrors []error
 		for variantNum, variation := range KindleDescriptionLineVariations {
@@ -296,14 +287,6 @@ const (
 	LineType_Description
 	LineType_Empty
 	LineType_Clipping
-)
-
-var (
-	// KindleSource is a regular expression representing the first line of every Kindle highlight/note.
-	//
-	// Sample line:
-	// "Alias Grace (Atwood, Margaret)"
-	KindleSource regexp.Regexp = *regexp.MustCompile(`^(.+) ?\(?(.+)?\)?$`)
 )
 
 type KindleDescriptionLineVariation struct {
