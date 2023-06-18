@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
+	"go.uber.org/zap"
 
 	"gopkg.in/yaml.v3"
 )
@@ -28,7 +29,9 @@ func main() {
 
 func _main() error {
 	var inputFilePath string
+	var verbose bool
 	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
+	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 
 	if inputFilePath == "" {
@@ -39,14 +42,22 @@ func _main() error {
 		return fmt.Errorf("input file must point to a valid file > %w", err)
 	}
 
-	processor := parser.NewParser(inputFilePath)
+	logger, err := zap.NewProduction()
+	if verbose {
+		logger, err = zap.NewDevelopment()
+	}
+	if err != nil {
+		return fmt.Errorf("could not create logger > %w", err)
+	}
+
+	processor := parser.NewParserWithLogger(inputFilePath, logger.With(zap.String("component", "processor")))
 
 	clippings, err := processor.Parse()
 	if err != nil {
 		return fmt.Errorf("error while parsing clippings file > %w", err)
 	}
 
-	fmt.Printf("Read %d clippings from file", len(clippings))
+	logger.Info("Read clippings from file", zap.Int("clipping_count", len(clippings)))
 
 	outputFile, err := os.Create("parsed-clippings.yaml")
 	if err != nil {

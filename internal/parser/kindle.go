@@ -10,10 +10,13 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"go.uber.org/zap"
 )
 
 type KindleClippings struct {
 	FilePath string
+	logger   *zap.Logger
 }
 
 type LineType int
@@ -110,7 +113,7 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 	var output []Clipping
 
 	scanner := bufio.NewScanner(clippings)
-	scanner.Split(ScanUsingUTF8FEFFAsDelimiter)
+	scanner.Split(k.scanUsingKindleClippingsSeparator)
 
 	// Initial character of Kindle's file is also a separator. So, we have to scan at least once to
 	// get rid of that section.
@@ -184,8 +187,7 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 		var variationErrors []error
 		for variantNum, variation := range KindleDescriptionLineVariations {
 			matches := variation.Matcher.FindSubmatchIndex(lineText)
-			// fmt.Printf("description: %#v\n", matches)
-			// fmt.Printf("description: %s\n", string(lineText))
+			k.logger.Debug("k.Line > description", zap.Ints("matches", matches), zap.ByteString("description_text", lineText))
 			if len(matches) != variation.RequiredMatchCount {
 				variationErrors = append(variationErrors, fmt.Errorf(`description line malformed with variant %d: "%s"`, variantNum, lineText))
 				continue
@@ -263,32 +265,37 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 	return nil
 }
 
-// ScanUsingUTF8FEFFAsDelimiter is a special character that is used in Kindle's clippings files.
-func ScanUsingUTF8FEFFAsDelimiter(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	// fmt.Printf("given data of length %d (at EOF: %v): %s\n", len(data), atEOF, string(data))
-	// Nothing to read, so just end this.
+// scanUsingKindleClippingsSeparator is a function which matches the separator function required by
+// bufio.Scanner and uses the KindleClippingSeparator (={10}) as the separator between blocks of
+// text.
+func (k *KindleClippings) scanUsingKindleClippingsSeparator(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	k.logger.Debug("bufio separator function", zap.Bool("at_eof", atEOF), zap.Int("data_length", len(data)), zap.ByteString("data_content", data))
+
+	// Nothing to read, so just stop reading.
 	if atEOF && len(data) == 0 {
-		// fmt.Println("---")
-		// fmt.Printf("Scan: at eof and no data")
+		k.logger.Debug("bufio separator function > at EOF and no more data")
 		return 0, nil, nil
 	}
 
-	// Look for the separator
+	// We are not at EOF or there is *some* data. This data might be in the `data` byteString.
+
+	// Look for the separator in the already read bytestring.
 	if loc := KindleClippingsSeparatorMatcher.FindIndex(data); loc != nil {
-		// fmt.Println("---")
-		// fmt.Println("Scan: ", len(data), loc[1]+2, len(data[:loc[0]]))
+		// Separator found. We have at least 1 complete clipping section here.
+		k.logger.Debug("bufio separator function > found separator", zap.Ints("locations_of_separator", loc))
 		return loc[1], data[:loc[0]], nil
 	}
 
-	// If we're at EOF and we still did not find the separator, then we don't have anything to
-	// return
+	// If we're at EOF but we did not find the separator, then this might be the last (possibly
+	// malformed) clipping section. So, return it as is and advance until the end of the underlying
+	// data.
 	if atEOF {
-		// fmt.Println("---")
-		// fmt.Println("Scan: at eof and returning remaining data: ", len(data))
+		k.logger.Debug("bufio separator function > at eof with final block of data", zap.Int("data_lenght", len(data)), zap.ByteString("data_content", data))
 		return len(data), data, nil
 	}
 
-	// We are not at EOF and we don't see a separator either
+	// We are not at EOF and we don't see a separator either. So, ask the scanner to read more data.
+	k.logger.Debug("bufio separator function > not at eof; not enough data", zap.Int("data_lenght", len(data)), zap.ByteString("data_content", data))
 	return 0, nil, nil
 }
 
