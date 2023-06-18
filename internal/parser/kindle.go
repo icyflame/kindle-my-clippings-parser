@@ -149,9 +149,7 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 		}{
 			{
 				lineType: LineType_Source,
-				// Each source line starts with 2 bytes which are there to denote the encoding of that
-				// particular clippings file.
-				text: components[0],
+				text:     components[0],
 			},
 			{
 				lineType: LineType_Description,
@@ -164,7 +162,7 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 		}
 
 		for _, line := range lines {
-			err := k.Line(line.lineType, bytes.TrimSpace(line.text), &currentClipping)
+			err := k.line(line.lineType, bytes.TrimSpace(line.text), &currentClipping)
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing a line > %w", err)
 			}
@@ -176,14 +174,20 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 	return output, nil
 }
 
-// Line ...
-func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Clipping) error {
+// line processes the given line or set of lines. When the line type is source, description, or
+// separator, this will definitely be a single line. But if the lineType is clipping, then it can be
+// multiline because we are using SplitN with N = 4.
+func (k *KindleClippings) line(lineType LineType, lineText []byte, clipping *Clipping) error {
 	switch lineType {
 	case LineType_Source:
 		notPrint := func(r rune) bool {
 			return !unicode.IsPrint(r)
 		}
 
+		// Trim all non-printable characters from the source. This line tends to start with \uFEFF,
+		// for some books. This might be because of an older Kindle software version which used that
+		// character as a separator, or to indicate the nature of the text that is inside each
+		// clipping section.
 		clipping.Source = strings.TrimFunc(string(lineText), notPrint)
 	case LineType_Description:
 		var variationErrors []error
