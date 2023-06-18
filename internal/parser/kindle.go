@@ -95,13 +95,18 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 	},
 }
 
+// A sample clipping:
+//
+// --- Sample START ---
+//
 // Alias Grace (Atwood, Margaret)
 // - Your Highlight on page 22 | location 281-283 | Added on Sunday, 5 May 2019 10:23:20
 // - Your Highlight on page ix | location 341-344 | Added on Saturday, 25 January 2020 10:47:54
 
 // They were bell-shaped and ruffled, gracefully waving and lovely under the sea; but if they washed up on the beach and dried out in the sun there was nothing left of them. And that is what the ladies are like: mostly water.
-// ^^ this can be multiline
 // ==========
+//
+// --- Sample END ---
 func (k *KindleClippings) Parse() (Clippings, error) {
 	clippings, err := os.Open(k.FilePath)
 	if err != nil {
@@ -120,14 +125,11 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 	scanner.Scan()
 
 	for scanner.Scan() {
-		// lineText := scanner.Text()
-		// components := strings.SplitN(lineText, "\n", 4)
-
 		lineContent := scanner.Bytes()
 		lineContent = bytes.TrimSpace(lineContent)
 		components := bytes.SplitN(lineContent, []byte{'\n'}, 4)
 
-		if k.IsException(components) {
+		if k.isException(components) {
 			continue
 		}
 
@@ -299,8 +301,12 @@ func (k *KindleClippings) scanUsingKindleClippingsSeparator(data []byte, atEOF b
 	return 0, nil, nil
 }
 
-// IsException ...
-func (k *KindleClippings) IsException(comps [][]byte) bool {
+// isException looks at a clipping section, which has been split using newline already and
+// identifies whether the clipping should be treated as an exception and skipped over.
+func (k *KindleClippings) isException(comps [][]byte) bool {
+	// Bookmark type clippings are included in Kindle's My Clippings text file and have only 2
+	// lines. The first line contains the source, whereas the second line contains the Bookmark,
+	// which has location information. We should ignore these.
 	if len(comps) == 2 &&
 		(bytes.HasPrefix(comps[1], []byte("- Your Bookmark")) ||
 			strings.Contains(string(comps[1]), `ブックマーク`)) {
