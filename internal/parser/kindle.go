@@ -16,32 +16,81 @@ type KindleClippings struct {
 	FilePath string
 }
 
-type Location struct {
-	Start int `yaml:",omitempty"`
-	End   int `yaml:",omitempty"`
-}
-
-type ClippingType int
+type LineType int
 
 const (
-	ClippingType_None ClippingType = iota
-	ClippingType_Highlight
-	ClippingType_Note
+	LineType_Invalid LineType = iota
+	LineType_Source
+	LineType_Description
+	LineType_Empty
+	LineType_Clipping
 )
 
-type Clipping struct {
-	Source string       `yaml:"source"`
-	Type   ClippingType `yaml:"type"`
+type Variant int
 
-	// Page is not always a number. Sometimes it is a lowercase Roman numeral "ix"
-	Page string `yaml:"page"`
+const (
+	Variant_English_BooksWithPageNum Variant = iota
+	Variant_English_BooksWithoutPageNum
+	Variant_Japanese
+)
 
-	LocationInSource Location  `yaml:"location_in_source"`
-	CreateTime       time.Time `yaml:"create_time"`
-	Text             string    `yaml:"text"`
+const KindleClippingsSeparator = "=========="
+
+var KindleClippingsSeparatorMatcher *regexp.Regexp = regexp.MustCompile(`={10}`)
+
+type KindleDescriptionLineVariation struct {
+	Matcher               *regexp.Regexp
+	RequiredMatchCount    int
+	Type                  [2]int
+	Page                  [2]int
+	LocationInSourceStart [2]int
+	LocationInSourceEnd   [2]int
+	CreateTime            [2]int
+	CreateTimeFormat      string
 }
 
-type Clippings []Clipping
+var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleDescriptionLineVariation{
+	// Sample line: Variation 1: Books with page numbers
+	// "- Your Highlight on page 373 | location 5709-5720 | Added on Sunday, 16 April 2023 10:13:54"
+	// "- Your Note on page 286 | location 4371 | Added on Saturday, 15 April 2023 12:51:43"
+	{
+		Matcher:               regexp.MustCompile(`^- Your (.+?) on page ([ivx0-9]+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
+		RequiredMatchCount:    12,
+		Type:                  [2]int{2, 3},
+		Page:                  [2]int{4, 5},
+		LocationInSourceStart: [2]int{6, 7},
+		LocationInSourceEnd:   [2]int{8, 9},
+		CreateTime:            [2]int{10, 11},
+		CreateTimeFormat:      "Monday, 2 January 2006 15:04:05",
+	},
+	// Sample line: Variation 2: Books with out page numbers
+	// "- Your Highlight at location 9723-9727 | Added on Sunday, 2 January 2022 13:17:22"
+	// "- Your Note at location 9727 | Added on Sunday, 2 January 2022 13:17:46"
+	{
+		Matcher:               regexp.MustCompile(`^- Your (.+?) at location (\d+)-?(\d+)? \| Added on (.+)$`),
+		RequiredMatchCount:    10,
+		Type:                  [2]int{2, 3},
+		Page:                  [2]int{-1, -1},
+		LocationInSourceStart: [2]int{4, 5},
+		LocationInSourceEnd:   [2]int{6, 7},
+		CreateTime:            [2]int{8, 9},
+		CreateTimeFormat:      "Monday, 2 January 2006 15:04:05",
+	},
+	// Sample line: Variation 3: Japanese
+	// "- 22ページ|位置No. 336のメモ |作成日: 2023年6月10日土曜日 9:18:40"
+	// "- 7ページ|位置No. 96-96のハイライト |作成日: 2023年5月14日日曜日 11:31:52"
+	// "- 1ページ|位置No. 5-5のハイライト |作成日: 2023年5月13日土曜日 19:47:14"
+	{
+		Matcher:               regexp.MustCompile(`- (\d+)ページ\|位置No. (\d+)-?(\d+)?の(.+) \|作成日: (.+)`),
+		RequiredMatchCount:    12,
+		Type:                  [2]int{8, 9},
+		Page:                  [2]int{2, 3},
+		LocationInSourceStart: [2]int{4, 5},
+		LocationInSourceEnd:   [2]int{6, 7},
+		CreateTime:            [2]int{10, 11},
+		CreateTimeFormat:      "2006年1月2日",
+	},
+}
 
 // Alias Grace (Atwood, Margaret)
 // - Your Highlight on page 22 | location 281-283 | Added on Sunday, 5 May 2019 10:23:20
@@ -212,82 +261,6 @@ func (k *KindleClippings) Line(lineType LineType, lineText []byte, clipping *Cli
 	}
 
 	return nil
-}
-
-const KindleClippingsSeparator = "=========="
-
-var KindleClippingsSeparatorMatcher *regexp.Regexp = regexp.MustCompile(`={10}`)
-
-type LineType int
-
-const (
-	LineType_Invalid LineType = iota
-	LineType_Source
-	LineType_Description
-	LineType_Empty
-	LineType_Clipping
-)
-
-type KindleDescriptionLineVariation struct {
-	Matcher               *regexp.Regexp
-	RequiredMatchCount    int
-	Type                  [2]int
-	Page                  [2]int
-	LocationInSourceStart [2]int
-	LocationInSourceEnd   [2]int
-	CreateTime            [2]int
-	CreateTimeFormat      string
-}
-
-type Variant int
-
-const (
-	Variant_English_BooksWithPageNum Variant = iota
-	Variant_English_BooksWithoutPageNum
-	Variant_Japanese
-)
-
-var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleDescriptionLineVariation{
-	// Sample line: Variation 1: Books with page numbers
-	// "- Your Highlight on page 373 | location 5709-5720 | Added on Sunday, 16 April 2023 10:13:54"
-	// "- Your Note on page 286 | location 4371 | Added on Saturday, 15 April 2023 12:51:43"
-	{
-		Matcher:               regexp.MustCompile(`^- Your (.+?) on page ([ivx0-9]+) \| location (\d+)-?(\d+)? \| Added on (.+)$`),
-		RequiredMatchCount:    12,
-		Type:                  [2]int{2, 3},
-		Page:                  [2]int{4, 5},
-		LocationInSourceStart: [2]int{6, 7},
-		LocationInSourceEnd:   [2]int{8, 9},
-		CreateTime:            [2]int{10, 11},
-		CreateTimeFormat:      "Monday, 2 January 2006 15:04:05",
-	},
-	// Sample line: Variation 2: Books with out page numbers
-	// "- Your Highlight at location 9723-9727 | Added on Sunday, 2 January 2022 13:17:22"
-	// "- Your Note at location 9727 | Added on Sunday, 2 January 2022 13:17:46"
-	{
-		Matcher:               regexp.MustCompile(`^- Your (.+?) at location (\d+)-?(\d+)? \| Added on (.+)$`),
-		RequiredMatchCount:    10,
-		Type:                  [2]int{2, 3},
-		Page:                  [2]int{-1, -1},
-		LocationInSourceStart: [2]int{4, 5},
-		LocationInSourceEnd:   [2]int{6, 7},
-		CreateTime:            [2]int{8, 9},
-		CreateTimeFormat:      "Monday, 2 January 2006 15:04:05",
-	},
-	// Sample line: Variation 3: Japanese
-	// "- 22ページ|位置No. 336のメモ |作成日: 2023年6月10日土曜日 9:18:40"
-	// "- 7ページ|位置No. 96-96のハイライト |作成日: 2023年5月14日日曜日 11:31:52"
-	// "- 1ページ|位置No. 5-5のハイライト |作成日: 2023年5月13日土曜日 19:47:14"
-	{
-		Matcher:               regexp.MustCompile(`- (\d+)ページ\|位置No. (\d+)-?(\d+)?の(.+) \|作成日: (.+)`),
-		RequiredMatchCount:    12,
-		Type:                  [2]int{8, 9},
-		Page:                  [2]int{2, 3},
-		LocationInSourceStart: [2]int{4, 5},
-		LocationInSourceEnd:   [2]int{6, 7},
-		CreateTime:            [2]int{10, 11},
-		CreateTimeFormat:      "2006年1月2日",
-	},
 }
 
 // ScanUsingUTF8FEFFAsDelimiter is a special character that is used in Kindle's clippings files.
