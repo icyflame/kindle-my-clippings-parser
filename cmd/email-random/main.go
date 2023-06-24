@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/icyflame/kindle-my-clippings-parser/internal/env"
+	"github.com/icyflame/kindle-my-clippings-parser/internal/notifier"
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
@@ -53,6 +55,11 @@ func _main() error {
 
 	logger.Info("Reading clippings from YAML file", zap.String("file", inputFilePath))
 
+	config, err := env.Process()
+	if err != nil {
+		return err
+	}
+
 	inputFile, err := os.Open(inputFilePath)
 	if err != nil {
 		return fmt.Errorf("could not create output yaml file > %w", err)
@@ -82,6 +89,26 @@ func _main() error {
 	}
 
 	logger.Debug("selected clipping", zap.Any("selected", selectedClipping))
+
+	emailNotifier := notifier.EmailSendgridNotifier{
+		Logger: logger,
+		APIKey: config.SendgridAPIKey,
+		Sender: notifier.Source{
+			Name:  config.SenderName,
+			Email: config.SenderEmail,
+		},
+		Receivers: []notifier.Source{
+			{
+				Name:  config.ReceiverName,
+				Email: config.ReceiverEmail,
+			},
+		},
+	}
+
+	err = emailNotifier.Notify(selectedClipping)
+	if err != nil {
+		return fmt.Errorf("could not notify the clipping > %w", err)
+	}
 
 	return nil
 }
