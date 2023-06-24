@@ -18,6 +18,8 @@ const (
 	ExitErr
 )
 
+const WantClippingType = parser.ClippingType_Highlight
+
 func main() {
 	err := _main()
 	if err != nil {
@@ -65,13 +67,37 @@ func _main() error {
 
 	logger.Info("read clippings", zap.Int("clipping_count", len(clippings)))
 
-	randInt, err := rand.Int(rand.Reader, big.NewInt(int64(len(clippings))))
-	if err != nil {
-		return fmt.Errorf("could not generate a random number between 0 and %d > %w", len(clippings), err)
+	count := 0
+	for _, c := range clippings {
+		if c.Type == WantClippingType {
+			count++
+		}
 	}
 
-	selectedClipping := clippings[int(randInt.Int64())]
+	logger.Info("clippings of wanted type", zap.Any("want_type", WantClippingType), zap.Int("clipping_count", count))
+
+	selectedClipping, err := chooseHighlight(clippings)
+	if err != nil {
+		return fmt.Errorf("could not select a random highlight > %w", err)
+	}
+
 	logger.Debug("selected clipping", zap.Any("selected", selectedClipping))
 
 	return nil
+}
+
+func chooseHighlight(clippings parser.Clippings) (parser.Clipping, error) {
+	for i := 0; i < 10; i++ {
+		randInt, err := rand.Int(rand.Reader, big.NewInt(int64(len(clippings))))
+		if err != nil {
+			return parser.Clipping{}, fmt.Errorf("could not generate a random number between 0 and %d > %w", len(clippings), err)
+		}
+
+		temporary := clippings[int(randInt.Int64())]
+		if temporary.Type == WantClippingType {
+			return temporary, nil
+		}
+	}
+
+	return parser.Clipping{}, fmt.Errorf("could not get a highlight despite 10 attempts")
 }
