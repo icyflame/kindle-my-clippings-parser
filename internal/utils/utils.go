@@ -3,15 +3,19 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
 	"v.io/x/lib/textutil"
 )
 
+// TextWidth is the width of the final email. All lines in the email will be less than this length.
+const TextWidth = 100
+
 // MakePlaintextEmailFromClipping ...
 func MakePlaintextEmailFromClipping(c parser.Clipping) (string, error) {
 	var buffer bytes.Buffer
-	w := textutil.NewUTF8WrapWriter(&buffer, 80)
+	w := textutil.NewUTF8WrapWriter(&buffer, TextWidth)
 	if _, err := w.Write([]byte(c.Text)); err != nil {
 		return "", fmt.Errorf("could not make plaintext email > %w", err)
 	}
@@ -20,15 +24,15 @@ func MakePlaintextEmailFromClipping(c parser.Clipping) (string, error) {
 		return "", fmt.Errorf("could not flush all input to output buffer > %w", err)
 	}
 
-	return fmt.Sprintf(`Today's Excerpt
+	clippingFormatted := strings.ReplaceAll("    "+buffer.String(), "\n", "\n    ")
 
-Today's excerpt is a highlight created on %s.
+	return fmt.Sprintf(`Today's excerpt is a highlight created on %s.
 
 %s
 
 -- %s
 
 `,
-		c.CreateTime.Format("2006-01-02"), buffer.String(), c.Source,
+		c.CreateTime.Format("2006-01-02"), clippingFormatted, c.Source,
 	), nil
 }
