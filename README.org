@@ -25,3 +25,10 @@ This works for all the variations that I have in my =My Clippings.txt= file as o
 
   # Off by 1, good enough!
 #+end_src
+
+This is a replacement for https://github.com/icyflame/excerpts_bot in Go. I rewrote the logic to
+parse the =My Clippings.txt= file inside a Kindle, rather than looking at the CSV files which can be
+emailed from the Kindle to one's email address, because I recently started using Calibre and keeping
+the My Clippings.txt file is much easier. It also means that I can send excerpts from books that I
+have not completed reading yet (as I used to send the CSV file with highlights to my email only
+after completing a book.)
