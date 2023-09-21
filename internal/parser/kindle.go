@@ -338,5 +338,15 @@ func (k *KindleClippings) isException(comps [][]byte) bool {
 		return true
 	}
 
+	// Kindle has an annoying feature which prevents the text of clippings that exceded the 10% of a
+	// book has been clipped limitation from showing up in the My Clippings.txt file. So, we will
+	// ignore them from the parsed YAML for the time being.
+	//
+	// Use bookcision.js to get these clippings and merge the two files together somehow.
+	if len(comps) == 4 &&
+		(bytes.Contains(comps[3], []byte("<You have reached the clipping limit for this item>"))) {
+		return true
+	}
+
 	return false
 }
