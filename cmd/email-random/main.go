@@ -11,6 +11,7 @@ import (
 	"github.com/icyflame/kindle-my-clippings-parser/internal/env"
 	"github.com/icyflame/kindle-my-clippings-parser/internal/notifier"
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
+	"github.com/icyflame/kindle-my-clippings-parser/internal/utils"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
@@ -89,6 +90,8 @@ func _main() error {
 	}
 
 	logger.Debug("selected clipping", zap.Any("selected", selectedClipping))
+	formatted, _ := utils.MakePlaintextEmailFromClipping(selectedClipping)
+	logger.Debug("formatted clippinpg", zap.String("formatted", formatted))
 
 	emailNotifier := notifier.EmailSendgridNotifier{
 		Logger: logger,

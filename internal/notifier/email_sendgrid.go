@@ -26,6 +26,8 @@ func (e *EmailSendgridNotifier) Notify(clipping parser.Clipping) error {
 	if err != nil {
 		return fmt.Errorf("could not construct plain text email from clipping %v > %w", clipping, err)
 	}
+
+	e.Logger.Debug("plaintext content of email", zap.String("content", plainTextContent))
 	message := mail.NewSingleEmailPlainText(from, subject, to, plainTextContent)
 
 	client := sendgrid.NewSendClient(e.APIKey)
