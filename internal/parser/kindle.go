@@ -115,10 +115,17 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 //
 // Alias Grace (Atwood, Margaret)
 // - Your Highlight on page 22 | location 281-283 | Added on Sunday, 5 May 2019 10:23:20
-// - Your Highlight on page ix | location 341-344 | Added on Saturday, 25 January 2020 10:47:54
-
+//
 // They were bell-shaped and ruffled, gracefully waving and lovely under the sea; but if they washed up on the beach and dried out in the sun there was nothing left of them. And that is what the ladies are like: mostly water.
 // ==========
+//
+// --- Sample END ---
+//
+// An alternate form of the second line is:
+//
+// --- Sample START ---
+//
+// - Your Highlight on page ix | location 341-344 | Added on Saturday, 25 January 2020 10:47:54
 //
 // --- Sample END ---
 func (k *KindleClippings) Parse() (Clippings, error) {
