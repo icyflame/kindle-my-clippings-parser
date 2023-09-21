@@ -93,6 +93,20 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 		CreateTime:            [2]int{10, 11},
 		CreateTimeFormat:      "2006年1月2日",
 	},
+	// Sample line - Variation 4 - English (since June 2023)
+	// Probably because of a Kindle software update
+	//
+	// - Your Highlight on page 4 | Location 52-54 | Added on Wednesday, June 14, 2023 10:34:06 PM
+	{
+		Matcher:               regexp.MustCompile(`^- Your (.+?) on page ([ivx0-9]+) \| Location (\d+)-?(\d+)? \| Added on (.+)$`),
+		RequiredMatchCount:    12,
+		Type:                  [2]int{2, 3},
+		Page:                  [2]int{4, 5},
+		LocationInSourceStart: [2]int{6, 7},
+		LocationInSourceEnd:   [2]int{8, 9},
+		CreateTime:            [2]int{10, 11},
+		CreateTimeFormat:      "Monday, January 2, 2006 3:04:05 PM",
+	},
 }
 
 // A sample clipping:
