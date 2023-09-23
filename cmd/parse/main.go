@@ -29,8 +29,10 @@ func main() {
 
 func _main() error {
 	var inputFilePath string
+	var outputFilePath string
 	var verbose bool
 	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
+	flag.StringVar(&outputFilePath, "output-file-path", "", "Output file. Output will be written in the YAML format.")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 
@@ -40,6 +42,14 @@ func _main() error {
 
 	if _, err := os.Stat(inputFilePath); err != nil {
 		return fmt.Errorf("input file must point to a valid file > %w", err)
+	}
+
+	if outputFilePath == "" {
+		return errors.New("output file path must be non-empty")
+	}
+
+	if _, err := os.Stat(outputFilePath); err == nil {
+		return errors.New("output file path must not exist before this script runs")
 	}
 
 	logger, err := zap.NewProduction()
@@ -59,7 +69,7 @@ func _main() error {
 
 	logger.Info("Read clippings from file", zap.Int("clipping_count", len(clippings)))
 
-	outputFile, err := os.Create("parsed-clippings.yaml")
+	outputFile, err := os.Create(outputFilePath)
 	if err != nil {
 		return fmt.Errorf("could not create output yaml file > %w", err)
 	}
