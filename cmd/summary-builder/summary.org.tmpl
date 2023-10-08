@@ -1,0 +1,7 @@
+#+TITLE: {{ .Name }}
+
+{{ range .Chapters }}
+
+{{ template "chapter.org.tmpl" . }}
+
+{{ end }}
