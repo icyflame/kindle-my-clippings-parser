@@ -106,11 +106,8 @@ func _main() error {
 	var data TemplateData
 	data.ClippingPairs = make([]parser.Clippings, 0)
 
-	for key, clippings := range clippingIndex {
+	for _, clippings := range clippingIndex {
 		count := len(clippings)
-		if count > 1 {
-			fmt.Printf("%s = %d\n", key, count)
-		}
 
 		if count == 2 {
 			var sortedClippings parser.Clippings = clippings
@@ -119,7 +116,7 @@ func _main() error {
 		}
 	}
 
-	tmpl, err := template.ParseFiles("./cmd/identify-duplicates/identify-duplicates.org.tmpl")
+	tmpl, err := template.ParseFiles("./cmd/identify-duplicate-pairs/identify-duplicate-pairs.html.tmpl")
 	if err != nil {
 		return fmt.Errorf("error while parsing the input template file > %w", err)
 	}
