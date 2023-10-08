@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sort"
+	"text/template"
 
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
 	"go.uber.org/zap"
@@ -97,11 +99,34 @@ func _main() error {
 		clippingIndex[clippingKey] = append(clippingIndex[clippingKey], clipping)
 	}
 
+	type TemplateData struct {
+		ClippingPairs []parser.Clippings
+	}
+
+	var data TemplateData
+	data.ClippingPairs = make([]parser.Clippings, 0)
+
 	for key, clippings := range clippingIndex {
 		count := len(clippings)
 		if count > 1 {
 			fmt.Printf("%s = %d\n", key, count)
 		}
+
+		if count == 2 {
+			var sortedClippings parser.Clippings = clippings
+			sort.Sort(parser.Clippings(sortedClippings))
+			data.ClippingPairs = append(data.ClippingPairs, sortedClippings)
+		}
+	}
+
+	tmpl, err := template.ParseFiles("./cmd/identify-duplicates/identify-duplicates.org.tmpl")
+	if err != nil {
+		return fmt.Errorf("error while parsing the input template file > %w", err)
+	}
+
+	err = tmpl.Execute(os.Stdout, data)
+	if err != nil {
+		return fmt.Errorf("error while executing text template > %w", err)
 	}
 
 	return nil
