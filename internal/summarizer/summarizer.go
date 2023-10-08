@@ -54,6 +54,10 @@ func (k *KindleCreator) Summarize(input parser.Clippings) (BookSummary, error) {
 
 			summ.Chapters = append(summ.Chapters, thisChapter)
 		}
+
+		if strings.HasPrefix(clipping.Text, "#cs ") {
+			summ.Chapters[len(summ.Chapters)-1].SummaryClippings = append(summ.Chapters[len(summ.Chapters)-1].SummaryClippings, clipping)
+		}
 	}
 
 	return summ, nil

@@ -1,3 +1,4 @@
 {{ .Level }} {{ .Name }}
-
--- TODO: Chapter summary will be written here --
+{{ range .SummaryClippings }}
+{{ slice .Text 4 }}
+{{ end }}
