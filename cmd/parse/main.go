@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 
+	"github.com/icyflame/kindle-my-clippings-parser/internal/duplicates"
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
 	"go.uber.org/zap"
 
@@ -28,11 +30,11 @@ func main() {
 }
 
 func _main() error {
-	var inputFilePath string
-	var outputFilePath string
-	var verbose bool
+	var inputFilePath, outputFilePath string
+	var verbose, removeDuplicates bool
 	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
 	flag.StringVar(&outputFilePath, "output-file-path", "", "Output file. Output will be written in the YAML format.")
+	flag.BoolVar(&removeDuplicates, "remove-duplicates", false, "Remove duplicate clippings of type Highlight from the generated YAML file")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 
@@ -68,6 +70,20 @@ func _main() error {
 	}
 
 	logger.Info("Read clippings from file", zap.Int("clipping_count", len(clippings)))
+
+	if removeDuplicates {
+		deduper := duplicates.RetainLatest{
+			Logger: logger.With(zap.String("component", "deduper")),
+		}
+		dedupedClippings, err := deduper.Delete(clippings)
+		if err != nil {
+			return fmt.Errorf("error while removing duplicates from the clippings set > %w", err)
+		}
+		clippings = dedupedClippings
+		logger.Info("Deduplicate clippings", zap.Int("clipping_count", len(clippings)))
+	}
+
+	sort.Sort(clippings)
 
 	outputFile, err := os.Create(outputFilePath)
 	if err != nil {
