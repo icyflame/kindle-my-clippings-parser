@@ -31,11 +31,9 @@ func main() {
 
 func _main() error {
 	var inputFilePath, outputFilePath string
-	var verbose, removeDuplicates, removeClippingLimit bool
+	var verbose bool
 	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
 	flag.StringVar(&outputFilePath, "output-file-path", "", "Output file. Output will be written in the YAML format.")
-	flag.BoolVar(&removeClippingLimit, "remove-clipping-limit", false, "Remove clippings which indicate that the clipping text was not saved to the text file")
-	flag.BoolVar(&removeDuplicates, "remove-duplicates", false, "Remove duplicate clippings of type Highlight from the generated YAML file")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 
@@ -63,28 +61,34 @@ func _main() error {
 		return fmt.Errorf("could not create logger > %w", err)
 	}
 
-	processor := parser.NewParserWithLogger(inputFilePath, removeClippingLimit, logger.With(zap.String("component", "processor")))
+	logger.Info("Reading clippings from YAML file", zap.String("file", inputFilePath))
 
-	clippings, err := processor.Parse()
+	inputFile, err := os.Open(inputFilePath)
 	if err != nil {
-		return fmt.Errorf("error while parsing clippings file > %w", err)
+		return fmt.Errorf("could not create output yaml file > %w", err)
+	}
+	defer inputFile.Close()
+
+	reader := yaml.NewDecoder(inputFile)
+	var clippings parser.Clippings
+	if err := reader.Decode(&clippings); err != nil {
+		return fmt.Errorf("could not encode parsed clippings into YAML > %w", err)
 	}
 
-	logger.Info("Read clippings from file", zap.Int("clipping_count", len(clippings)))
+	logger.Info("read clippings from parsed YAML file", zap.Int("clipping_count", len(clippings)))
 
-	if removeDuplicates {
-		deduper := duplicates.RetainLatest{
-			Logger: logger.With(zap.String("component", "deduper")),
-		}
-		dedupedClippings, err := deduper.Delete(clippings)
-		if err != nil {
-			return fmt.Errorf("error while removing duplicates from the clippings set > %w", err)
-		}
-		clippings = dedupedClippings
-		logger.Info("Deduplicate clippings", zap.Int("clipping_count", len(clippings)))
+	deduper := duplicates.RetainLatest{
+		Logger: logger.With(zap.String("component", "deduper")),
 	}
 
-	sort.Sort(clippings)
+	dedupedClippings, err := deduper.Delete(clippings)
+	if err != nil {
+		return fmt.Errorf("error while removing duplicates from the clippings set > %w", err)
+	}
+
+	logger.Info("deduplicate clippings", zap.Int("clipping_count", len(dedupedClippings)))
+
+	sort.Sort(dedupedClippings)
 
 	outputFile, err := os.Create(outputFilePath)
 	if err != nil {
@@ -94,7 +98,7 @@ func _main() error {
 
 	writer := yaml.NewEncoder(outputFile)
 	defer writer.Close()
-	if err := writer.Encode(clippings); err != nil {
+	if err := writer.Encode(dedupedClippings); err != nil {
 		return fmt.Errorf("could not encode parsed clippings into YAML > %w", err)
 	}
 

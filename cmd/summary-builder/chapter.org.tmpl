@@ -1,0 +1,4 @@
+{{ .Level }} {{ .Name }}
+{{ range .SummaryClippings }}
+{{ slice .Text 4 }}
+{{ end }}
