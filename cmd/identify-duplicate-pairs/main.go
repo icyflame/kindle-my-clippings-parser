@@ -106,10 +106,11 @@ func _main() error {
 	var data TemplateData
 	data.ClippingPairs = make([]parser.Clippings, 0)
 
-	for _, clippings := range clippingIndex {
+	for clippingKey, clippings := range clippingIndex {
 		count := len(clippings)
 
 		if count == 2 {
+			logger.Info("duplicates identified", zap.String("key", clippingKey), zap.Int("count", count))
 			var sortedClippings parser.Clippings = clippings
 			sort.Sort(parser.Clippings(sortedClippings))
 			data.ClippingPairs = append(data.ClippingPairs, sortedClippings)
