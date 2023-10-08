@@ -15,8 +15,9 @@ import (
 )
 
 type KindleClippings struct {
-	FilePath string
-	logger   *zap.Logger
+	FilePath                     string
+	RemoveClippingLimitClippings bool
+	logger                       *zap.Logger
 }
 
 type LineType int
@@ -28,6 +29,8 @@ const (
 	LineType_Empty
 	LineType_Clipping
 )
+
+const KindleClippingLimitMessage = "<You have reached the clipping limit for this item>"
 
 type Variant int
 
@@ -343,8 +346,8 @@ func (k *KindleClippings) isException(comps [][]byte) bool {
 	// ignore them from the parsed YAML for the time being.
 	//
 	// Use bookcision.js to get these clippings and merge the two files together somehow.
-	if len(comps) == 4 &&
-		(bytes.Contains(comps[3], []byte("<You have reached the clipping limit for this item>"))) {
+	if k.RemoveClippingLimitClippings && len(comps) == 4 &&
+		(bytes.Contains(comps[3], []byte(KindleClippingLimitMessage))) {
 		return true
 	}
 

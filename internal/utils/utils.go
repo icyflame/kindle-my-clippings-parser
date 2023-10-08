@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
@@ -35,4 +36,27 @@ func MakePlaintextEmailFromClipping(c parser.Clipping) (string, error) {
 `,
 		c.CreateTime.Format("2006-01-02"), clippingFormatted, c.Source,
 	), nil
+}
+
+// FilterBySource ...
+func FilterBySource(input parser.Clippings, source string) parser.Clippings {
+	output := make(parser.Clippings, 0)
+	for _, c := range input {
+		if source == c.Source {
+			output = append(output, c)
+		}
+	}
+
+	return output
+}
+
+func FilterBySourceRegex(input parser.Clippings, source *regexp.Regexp) parser.Clippings {
+	output := make(parser.Clippings, 0)
+	for _, c := range input {
+		if source.MatchString(c.Source) {
+			output = append(output, c)
+		}
+	}
+
+	return output
 }

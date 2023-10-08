@@ -13,9 +13,10 @@ func NewParser(inputFilePath string) Parser {
 	}
 }
 
-func NewParserWithLogger(inputFilePath string, logger *zap.Logger) Parser {
+func NewParserWithLogger(inputFilePath string, removeClippingLimitMessages bool, logger *zap.Logger) Parser {
 	return &KindleClippings{
-		FilePath: inputFilePath,
-		logger:   logger,
+		FilePath:                     inputFilePath,
+		RemoveClippingLimitClippings: removeClippingLimitMessages,
+		logger:                       logger,
 	}
 }
