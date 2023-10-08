@@ -1,6 +1,9 @@
 package parser
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Location struct {
 	Start int `yaml:",omitempty"`
@@ -36,7 +39,24 @@ func (c Clippings) Len() int {
 
 // Less ...
 func (c Clippings) Less(i, j int) bool {
-	return c[i].CreateTime.Before(c[j].CreateTime)
+	// First, sort alphabetically by the name of the Source
+	if c[i].Source != c[j].Source {
+		return strings.Compare(c[i].Source, c[j].Source) < 0
+	}
+
+	// Second, sort by the start location inside a given source
+	if c[i].LocationInSource.Start != c[j].LocationInSource.Start {
+		return c[i].LocationInSource.Start < c[j].LocationInSource.Start
+	}
+
+	// Third, sort by the type of clipping (i.e. all highlights with this start location will come
+	// before the notes at this start location)
+	if c[i].Type != c[j].Type {
+		return c[i].Type < c[j].Type
+	}
+
+	// Fourth, sort reverse chronologically by create time
+	return c[i].CreateTime.After(c[j].CreateTime)
 }
 
 // Swap ...
