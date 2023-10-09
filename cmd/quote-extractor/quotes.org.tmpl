@@ -1,0 +1,8 @@
+* Quotes
+{{ range .Clippings }}
+#+begin_quote
+{{ .Text }}
+
+-- p.{{.Page}}, {{.Source}}
+#+end_quote
+{{ end }}
