@@ -27,9 +27,139 @@ This works for all the variations that I have in my =My Clippings.txt= file as o
   # Off by 1, good enough!
 #+end_src
 
-This is a replacement for https://github.com/icyflame/excerpts_bot in Go. I rewrote the logic to
-parse the =My Clippings.txt= file inside a Kindle, rather than looking at the CSV files which can be
-emailed from the Kindle to one's email address, because I recently started using Calibre and keeping
-the My Clippings.txt file is much easier. It also means that I can send excerpts from books that I
-have not completed reading yet (as I used to send the CSV file with highlights to my email only
-after completing a book.)
+This is a replacement for https://github.com/icyflame/excerpts_bot in Golang. I rewrote the logic to
+parse the =My Clippings.txt= file inside a Kindle, rather than looking using the CSV files which can be
+emailed from a Kindle to onself. I recently started using Calibre and keeping
+the =My Clippings.txt= file in sync is easier.
+
+Some additional advantages include the fact that I can now export clippings from books that I have
+not completed reading yet (such as collection of multiple novels from a single author, out of which
+I have completed reading only one novel), from books that are in the open domain and were not bought
+from the Amazon store, and from articles which were [[https://blog.siddharthkannan.in/technology/reading/books/2023/06/17/better-epub-files/][converted to Epub]] and added to my Kindle using
+Calibre.
+
+* Project Structure
+
+This project is a set of useful libraries for parsing which are present inside the =internal/=
+folder, and a set of commands which use these libraries inside the =cmd/= folder. It follows the
+usual structure of Golang projects and works well with =gopls=.
+
+* Commands
+
+All the commands in this project can be built using the following oneliner:
+
+#+begin_src sh
+  $ ls -1 cmd | while read p; do rm -f $p; go build -v -o $p ./cmd/$p/; done
+#+end_src
+
+** =parse=
+
+#+begin_src sh
+  $ ./parse -help
+  Usage of ./parse:
+	-input-file-path string
+		  Input file. Supports the My Clippings.txt file from any Kindle
+	-output-file-path string
+		  Output file. Output will be written in the YAML format.
+	-remove-clipping-limit
+		  Remove clippings which indicate that the clipping text was not saved to the text file
+	-remove-duplicates
+		  Remove duplicate clippings of type Highlight from the generated YAML file
+	-verbose
+		  Enable verbose logging
+#+end_src
+
+This command is the primary command that I use to convert a text file containing clippings into a
+YAML file containing all types of clippings. Two flags are worth mentioning.
+
+Kindle's software does not track existing highlight entries, when an existing note is updated. The
+text file seems to be append-only. So, if you write a note, and later, go back to the note and edit
+it, there will be 2 entries in the Clippings text file. The =-remove-duplicates= flag will remove
+any highlights which are from the same source (book and author) and begin at the same position,
+retaining only the most recently created highlight.
+
+When you have highlighted more than 10% of a book which you bought on the Amazon ebook store, the
+Kindle will stop writing the content of clippings into the clippings text file. Instead, it will be
+replaced by the following message:
+
+#+begin_src text
+  <You have reached the clipping limit for this item>
+#+end_src
+
+The =-remove-clipping-limit= flag will remove such highlights from the parsed YAML file.
+
+*Note* that although clippings will still be shown on the Kindle device itself, they will not be
+exportable through the clippings text file beyond the 10% limit. See the
+=supplement-with-bookcision= command below for one option to export highlights which the Kindle
+software refuses to export.
+
+** =supplement-with-bookcision=
+
+** =deduper=
+
+#+begin_src sh
+  $ ./deduper -help
+  Usage of ./deduper:
+	-input-file-path string
+		  Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.
+	-output-file-path string
+		  Output file. Output will be written in the YAML format.
+	-verbose
+		  Enable verbose logging
+#+end_src
+
+This command isolates the "deduplication" function that is implemented by the =-remove-duplicates=
+flag of the =parse= command. You can use this command, along with the excellent YAML syntactic diff
+program [[https://github.com/homeport/dyff][dyff]] to see what highlights will be removed, and whether they are truly duplicates.
+
+** =identify-duplicate-pairs=
+
+#+begin_src sh
+  $ ./identify-duplicate-pairs -help
+  Usage of ./identify-duplicate-pairs:
+	-input-file-path string
+		  Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.
+	-source-filter string
+		  Regular expression for filtering the source of clippings
+	-verbose
+		  Enable verbose logging
+#+end_src
+
+This command generates a side-by-side view of the duplicates which were identified in a parsed
+clippings file. It takes a YAML file and shows any clippings which are from the same source and
+start at the same position. It identifies only pairs, and outputs a readable HTML file which can be
+viewed in any web browser. I wrote this command mainly to confirm that the logic I was using to
+identify duplicates was identifying true duplicates.
+
+The output HTML file from this command looks like this:
+
+[[file:img/identify-duplicate-pairs-sample.png]]
+
+This HTML file was generated using the following command:
+
+#+begin_src sh
+  $ ./identify-duplicate-pairs -input-file-path ./parsed-clippings-with-clipping-limits.yml -source-filter 'Anna' > output.html
+#+end_src
+
+It shows the duplicates from some of my notes on a book. In most of the quotes, I have added
+something to the quote after a few minutes or seconds.
+
+This HTML files uses [[https://getbootstrap.com/docs/5.3/content/tables/#variants][Bootstrap's table related classes]].
+
+** =quote-extractor=
+
+** =summary-builder=
+
+** =email-random=
+
+* Environment
+
+This project has been tested with Golang 1.20 on Linux running on AMD64 architecture.
+
+#+begin_src sh
+  $ go version
+  go version go1.20.2 linux/amd64
+#+end_src
+
+With the appropriate Golang version, this project will probably work on any operating system and
+architecture. In case it doesn't work on some setup, pull requests improving support are welcome!

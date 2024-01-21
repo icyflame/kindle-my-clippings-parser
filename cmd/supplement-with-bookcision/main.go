@@ -33,7 +33,7 @@ func main() {
 func _main() error {
 	var inputFilePath, outputFilePath, supplementFilePath, sourceFilter string
 	var verbose bool
-	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
+	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.")
 	flag.StringVar(&outputFilePath, "output-file-path", "", "Output file. Output will be written in the YAML format.")
 	flag.StringVar(&supplementFilePath, "supplement-file-path", "", "JSON file with all the clippings, exported using Bookcision")
 	flag.StringVar(&sourceFilter, "source-filter", "", "Regular expression for filtering the source of clippings")
