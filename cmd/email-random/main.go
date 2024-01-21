@@ -34,7 +34,7 @@ func main() {
 func _main() error {
 	var inputFilePath string
 	var verbose bool
-	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
+	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 

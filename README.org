@@ -2,6 +2,21 @@
 
 This works for all the variations that I have in my =My Clippings.txt= file as of now.
 
+This project started as a replacement for https://github.com/icyflame/excerpts_bot in Golang. I
+rewrote the logic to parse the =My Clippings.txt= file inside a Kindle, rather than looking using
+the CSV files which can be emailed from a Kindle to onself. I recently started using Calibre and
+keeping the =My Clippings.txt= file in sync was easier.
+
+Some additional advantages include the fact that I can now export clippings from books that I have
+not completed reading yet (such as collection of multiple novels from a single author, out of which
+I have completed reading only one novel), from books that are in the open domain and were not bought
+from the Amazon store, and from articles which were [[https://blog.siddharthkannan.in/technology/reading/books/2023/06/17/better-epub-files/][converted to Epub]] and added to my Kindle using
+Calibre.
+
+After converting the clippings text file to YAML, I found many more opportunities for using it such
+as auto-generated summaries, identification of the best quotes in a book, generation of a list of
+references that were mentioned in the book which I want to investigate later, and so on.
+
 #+begin_src sh
   # Find the number of clippings inside a My Clippings.txt file
   # Exclude bookmarks
@@ -27,17 +42,6 @@ This works for all the variations that I have in my =My Clippings.txt= file as o
   # Off by 1, good enough!
 #+end_src
 
-This is a replacement for https://github.com/icyflame/excerpts_bot in Golang. I rewrote the logic to
-parse the =My Clippings.txt= file inside a Kindle, rather than looking using the CSV files which can be
-emailed from a Kindle to onself. I recently started using Calibre and keeping
-the =My Clippings.txt= file in sync is easier.
-
-Some additional advantages include the fact that I can now export clippings from books that I have
-not completed reading yet (such as collection of multiple novels from a single author, out of which
-I have completed reading only one novel), from books that are in the open domain and were not bought
-from the Amazon store, and from articles which were [[https://blog.siddharthkannan.in/technology/reading/books/2023/06/17/better-epub-files/][converted to Epub]] and added to my Kindle using
-Calibre.
-
 * Project Structure
 
 This project is a set of useful libraries for parsing which are present inside the =internal/=
@@ -52,7 +56,8 @@ All the commands in this project can be built using the following oneliner:
   $ ls -1 cmd | while read p; do rm -f $p; go build -v -o $p ./cmd/$p/; done
 #+end_src
 
-** =parse=
+** Commands related to parsing
+*** =parse=
 
 #+begin_src sh
   $ ./parse -help
@@ -93,9 +98,41 @@ exportable through the clippings text file beyond the 10% limit. See the
 =supplement-with-bookcision= command below for one option to export highlights which the Kindle
 software refuses to export.
 
-** =supplement-with-bookcision=
+*** =supplement-with-bookcision=
 
-** =deduper=
+#+begin_src sh
+  $ ./supplement-with-bookcision -help
+  Usage of ./supplement-with-bookcision:
+	-input-file-path string
+		  Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.
+	-output-file-path string
+		  Output file. Output will be written in the YAML format.
+	-source-filter string
+		  Regular expression for filtering the source of clippings
+	-supplement-file-path string
+		  JSON file with all the clippings, exported using Bookcision
+	-verbose
+		  Enable verbose logging
+#+end_src
+
+If you highlight more than 10% of a book's content, Kindle's software stops writing the content of
+highlights to its text file. This text is still available to Kindle and is shown in the "notebooks"
+view, however it can not be easily exported natively. To get around this limitation, I use the tool
+[[https://readwise.io/bookcision][Bookcision]]. Bookcision is an excellent script which runs on the online eReader provided by Amazon at
+=read.amazon.com=: Open your book on =read.amazon.com=, open the highlights page overlay, and run
+this JavaScript, and download a JSON file which has the content of *all* the highlights from that
+book. Once this is done, there remains the task of merging the downloaded JSON with the existing
+YAML file which we have parsed from the clippings text file on the Kindle. This is the task of the
+=./supplement-with-bookcision= command.
+
+This command works with only one source at a time, so the appropriate =-source-filter= flag is a
+necessity. After merging highlights from the Bookcision file into the YAML input file, the output
+YAML file will be in the same structure as before but will have all your highlights from a book.
+
+
+** Command related to deduplication
+
+*** =deduper=
 
 #+begin_src sh
   $ ./deduper -help
@@ -112,7 +149,7 @@ This command isolates the "deduplication" function that is implemented by the =-
 flag of the =parse= command. You can use this command, along with the excellent YAML syntactic diff
 program [[https://github.com/homeport/dyff][dyff]] to see what highlights will be removed, and whether they are truly duplicates.
 
-** =identify-duplicate-pairs=
+*** =identify-duplicate-pairs=
 
 #+begin_src sh
   $ ./identify-duplicate-pairs -help
@@ -146,11 +183,86 @@ something to the quote after a few minutes or seconds.
 
 This HTML files uses [[https://getbootstrap.com/docs/5.3/content/tables/#variants][Bootstrap's table related classes]].
 
-** =quote-extractor=
 
-** =summary-builder=
+** Commands related to auto-generated summaries
 
-** =email-random=
+When taking notes on the Kindle, I wanted to be able to auto-generate summaries of books and a
+collection of quotes from the books which I want to view inside my editor and use when I am writing
+notes or a blog post about the book. In order to do this, I have come up with some rudimentary
+specifications:
+
+1. ~#quote~: Quote from the book which I want to highlight in my review
+2. ~#cn [1-9]+?~: Name of a chapter with the level at which the chapter is nested
+3. ~#cs~: Summary of a chapter
+4. ~#read~: References in the book that I want to add to my reading list
+
+The following commands help me to do this.
+
+*** =quote-extractor=
+
+#+begin_src sh
+  $ ./quote-extractor -help
+  Usage of ./quote-extractor:
+	-input-file-path string
+		  Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.
+	-source-filter string
+		  Regular expression for filtering the source of clippings
+	-verbose
+		  Enable verbose logging
+#+end_src
+
+This command simply extracts any quote from the book which is marked with the highlight =#quote=. I
+use this in order to find the quotes I liked the most in a book. The source filter can be used if
+you want to get the quotes from only a single source at a time. *Note* that the output of this
+command is in the [[https://orgmode.org/][Org mode]] format. Org mode is a commonly used plaintext file format inside
+Emacs. If you are used to Markdown, then you may use [[https://pandoc.org/][Pandoc]] to convert Org mode into Markdown (or
+any other format of your choice.)
+
+*** =summary-builder=
+
+#+begin_src sh
+  $ ./summary-builder -help
+  Usage of ./summary-builder:
+	-input-file-path string
+		  Input file. YAML file output from the parse command
+	-source-filter string
+		  Regular expression for filtering the source of clippings
+	-verbose
+		  Enable verbose logging
+#+end_src
+
+This command extracts a summary of the book using the highlights that I added while I was reading
+the book. The output is in the Org mode format, with chapter names as headings and the chapter
+summaries appended to each heading appropriately:
+
+#+begin_src org
+  ,* On 42
+
+  In this chapter, the author delves into the reason that 42 is considered the answer to all the
+  questions in the world.
+
+  ,* Knee Socks
+
+  The author has great insights on why Knee Socks is the best Arctic Monkeys song of all time.
+#+end_src
+
+** Utilities
+
+*** =email-random=
+
+#+begin_src sh
+  $ ./email-random -help
+  Usage of ./email-random:
+	-input-file-path string
+		  Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.
+	-verbose
+		  Enable verbose logging
+#+end_src
+
+This is a rewrite from scratch of the [[https://github.com/icyflame/excerpts_bot][excerpts_bot]] project; an excellent idea originally though up
+by [[https://github.com/nishnik/excerpts_bot][Nishant]]. While the original bot was written in Python and posted to Twitter, this version sends
+an e-mail (in my case) everyday and is running on [[https://www.raspberrypi.com/][a Raspberry Pi]] that is connected to my router at
+home.
 
 * Environment
 
@@ -163,3 +275,7 @@ This project has been tested with Golang 1.20 on Linux running on AMD64 architec
 
 With the appropriate Golang version, this project will probably work on any operating system and
 architecture. In case it doesn't work on some setup, pull requests improving support are welcome!
+
+I [[https://blog.siddharthkannan.in/2020/10/25/discovering-org-mode][use]] Emacs and Org mode as my primary editor and text file format for notes. So, the output of some
+commands is in this repository is in the [[https://orgmode.org/][Org mode]] format. Org mode is a readable text file format.
+You may use [[https://pandoc.org/][Pandoc]] to convert Org mode into Markdown or any other format of your choice.

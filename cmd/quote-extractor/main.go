@@ -35,7 +35,7 @@ func main() {
 func _main() error {
 	var inputFilePath, sourceFilter string
 	var verbose bool
-	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
+	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.")
 	flag.StringVar(&sourceFilter, "source-filter", "", "Regular expression for filtering the source of clippings")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
