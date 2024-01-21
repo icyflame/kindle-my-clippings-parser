@@ -32,7 +32,7 @@ func main() {
 func _main() error {
 	var inputFilePath, outputFilePath string
 	var verbose, removeDuplicates, removeClippingLimit bool
-	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Preferably the My Clippings.txt file from Kindle")
+	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Supports the My Clippings.txt file from any Kindle")
 	flag.StringVar(&outputFilePath, "output-file-path", "", "Output file. Output will be written in the YAML format.")
 	flag.BoolVar(&removeClippingLimit, "remove-clipping-limit", false, "Remove clippings which indicate that the clipping text was not saved to the text file")
 	flag.BoolVar(&removeDuplicates, "remove-duplicates", false, "Remove duplicate clippings of type Highlight from the generated YAML file")

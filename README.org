@@ -3,14 +3,8 @@
 This works for all the variations that I have in my =My Clippings.txt= file as of now.
 
 #+begin_src sh
-  # Find the number of clippings read by the parser
-  $ go run kindle-my-clippings-parser.go -input-file-path ~/notes/kindle-clippings/My\ Clippings.txt
-  Read 8172 clippings from file%
-
-  $ rg -c -- '- source' parsed-clippings.yaml
-  8172
-
-  # Find the number of clippings actually inside the text file
+  # Find the number of clippings inside a My Clippings.txt file
+  # Exclude bookmarks
   $ rg -c -- 'ブックマーク' ~/notes/kindle-clippings/My\ Clippings.txt
   1
 
@@ -22,6 +16,13 @@ This works for all the variations that I have in my =My Clippings.txt= file as o
 
   $ echo $((8233-59-1))
   8173
+
+  # Use the parser to extract the clippings to a YAML file
+  $ go run kindle-my-clippings-parser.go -input-file-path ~/notes/kindle-clippings/My\ Clippings.txt
+  Read 8172 clippings from file%
+
+  $ rg -c -- '- source' parsed-clippings.yaml
+  8172
 
   # Off by 1, good enough!
 #+end_src
