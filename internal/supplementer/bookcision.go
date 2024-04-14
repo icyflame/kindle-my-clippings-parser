@@ -3,6 +3,7 @@ package supplementer
 import (
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/icyflame/kindle-my-clippings-parser/internal/parser"
 	"go.uber.org/zap"
@@ -22,7 +23,7 @@ func (b *Bookcision) Merge(kindleInput parser.Clippings, bookcision parser.Clipp
 
 	j := 0
 	for _, kindle := range kindleInput {
-		if b.SourceRegex.MatchString(kindle.Source) && kindle.Text == parser.KindleClippingLimitMessage {
+		if b.SourceRegex.MatchString(kindle.Source) && strings.Contains(kindle.Text, parser.KindleClippingLimitMessage) {
 			for ; j < len(bookcision); j++ {
 				// Kindle has moved ahead of bookcision, so increase bookcision and see whether we
 				// find something that matches
