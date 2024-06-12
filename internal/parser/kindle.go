@@ -110,6 +110,19 @@ var KindleDescriptionLineVariations []KindleDescriptionLineVariation = []KindleD
 		CreateTime:            [2]int{10, 11},
 		CreateTimeFormat:      "Monday, January 2, 2006 3:04:05 PM",
 	},
+	// Sample Line - Variation 5 - English (since June 2024)
+	// Probably because of a Kindle software update
+	// - Your Highlight on Location 136-138 | Added on Tuesday, March 19, 2024 9:45:15 PM
+	{
+		Matcher:               regexp.MustCompile(`^- Your (.+?) on Location (\d+)-?(\d+)? \| Added on (.+)$`),
+		RequiredMatchCount:    10,
+		Type:                  [2]int{2, 3},
+		Page:                  [2]int{-1, -1},
+		LocationInSourceStart: [2]int{4, 5},
+		LocationInSourceEnd:   [2]int{6, 7},
+		CreateTime:            [2]int{8, 9},
+		CreateTimeFormat:      "Monday, January 2, 2006 3:04:05 PM",
+	},
 }
 
 // A sample clipping:
