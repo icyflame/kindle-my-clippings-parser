@@ -24,23 +24,27 @@ jobs:
         run: go version
       - name: Get dependencies
         run: go get ./...
-      - name: Print the list of files
-        run: ls -lsh .
-      - name: Build binary for the required OS and architecture
-        run: |
-          GOOS=${{ matrix.os-flavor }} GOARCH=${{ matrix.architecture }} go build -ldflags="-X \"github.com/icyflame/kindle-my-clippings-parser/internal/env.Version=${{ github.ref }} $GITHUB_SHA\"" -o $(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }} ${{ matrix.path-to-build }}
-
-      - name: Print the branch/tag name and the commit hash
+      - name: Build binary for the given paths
         run: |
           echo "Ref: ${{ github.ref }}; Commit: $GITHUB_SHA"
-      - name: Print file output of the binary file that was built
-        run: |
+
+          OUTPUT_FILE_NAME="./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}"
+
+          GOOS=${{ matrix.os-flavor }} GOARCH=${{ matrix.architecture }} \
+            go build \
+            -ldflags="-X \"github.com/icyflame/kindle-my-clippings-parser/internal/env.Version=${{ github.ref }} $GITHUB_SHA\"" \
+            -o $OUTPUT_FILE_NAME ${{ matrix.path-to-build }}
+
+          sha256sum $OUTPUT_FILE_NAME > $OUTPUT_FILE_NAME.checksum
+
           file ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
-          ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }} -version
-          sha256sum ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+          file ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}.checksum
+
+          ls -lsh .
       - name: Upload binaries if a tag was pushed
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+            ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}.checksum
