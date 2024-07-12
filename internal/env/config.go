@@ -7,6 +7,8 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+var Version string = "unset"
+
 type Environment struct {
 	SendgridAPIKey string `envconfig:"SENDGRID_API_KEY" required:"true"`
 	SenderName     string `envconfig:"sender_name"`

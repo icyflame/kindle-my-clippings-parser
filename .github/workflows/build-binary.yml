@@ -1,0 +1,50 @@
+name: Build Binary
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.5' ]
+        os-flavor: [ 'linux' ]
+        architecture: [ 'amd64', 'arm', 'arm64' ]
+        path-to-build: [ './cmd/email-random' ]
+
+    steps:
+      - uses: actions/checkout@v4
+      # Caching is enabled by default when using setup-go
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      # You can test your matrix by printing the current Go version
+      - name: Display Go version
+        run: go version
+      - name: Get dependencies
+        run: go get ./...
+      - name: Build binary for the given paths
+        run: |
+          echo "Ref: ${{ github.ref }}; Commit: $GITHUB_SHA"
+
+          OUTPUT_FILE_NAME="./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}"
+
+          GOOS=${{ matrix.os-flavor }} GOARCH=${{ matrix.architecture }} \
+            go build \
+            -ldflags="-X \"github.com/icyflame/kindle-my-clippings-parser/internal/env.Version=${{ github.ref }} $GITHUB_SHA\"" \
+            -o $OUTPUT_FILE_NAME ${{ matrix.path-to-build }}
+
+          sha256sum $OUTPUT_FILE_NAME > $OUTPUT_FILE_NAME.checksum
+
+          file ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+          file ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}.checksum
+
+          ls -lsh .
+      - name: Upload binaries if a tag was pushed
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+            ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}.checksum

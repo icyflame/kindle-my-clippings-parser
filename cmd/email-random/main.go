@@ -34,9 +34,16 @@ func main() {
 func _main() error {
 	var inputFilePath string
 	var verbose bool
+	var version bool
+	flag.BoolVar(&version, "version", false, "Print the build version")
 	flag.StringVar(&inputFilePath, "input-file-path", "", "Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
+
+	if version {
+		fmt.Println(env.Version)
+		return nil
+	}
 
 	if inputFilePath == "" {
 		return errors.New("input file path must be non-empty")
