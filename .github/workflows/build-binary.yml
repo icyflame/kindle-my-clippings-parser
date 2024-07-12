@@ -47,8 +47,8 @@ jobs:
 
           {
               echo 'OUTPUT_FILES<<EOF'
-              ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
-              ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}.checksum
+              echo $(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+              echo $(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}.checksum
               echo EOF
           } >> "$GITHUB_OUTPUT"
       - name: Upload binaries if a tag was pushed
