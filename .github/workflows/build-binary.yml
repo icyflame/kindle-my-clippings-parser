@@ -28,13 +28,15 @@ jobs:
         run: ls -lsh .
       - name: Build binary for the required OS and architecture
         run: |
-          GOOS=${{ matrix.os-flavor }} GOARCH=${{ matrix.architecture }} go build -o $(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }} ${{ matrix.path-to-build }}
+          GOOS=${{ matrix.os-flavor }} GOARCH=${{ matrix.architecture }} go build -ldflags="-X \"github.com/icyflame/kindle-my-clippings-parser/internal/env.Version=${{ github.ref }} $GITHUB_SHA\"" -o $(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }} ${{ matrix.path-to-build }}
+
       - name: Print the branch/tag name and the commit hash
         run: |
-          echo "Ref: ${{ github.ref }}; Commit: ${{ github.after }}"
+          echo "Ref: ${{ github.ref }}; Commit: $GITHUB_SHA"
       - name: Print file output of the binary file that was built
         run: |
           file ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+          ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }} -version
           sha256sum ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
       - name: Upload binaries if a tag was pushed
         uses: softprops/action-gh-release@v2
