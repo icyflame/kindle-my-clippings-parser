@@ -290,3 +290,13 @@ command, puts the output in an archive, and uploads it as a release artifact to 
 tag. The builds are performed for 3 architectures right now: amd64, arm (32 bit), and arm64. My
 motivation for this is to improve my personal setup to avoid having to download and build code on a
 Raspberry Pi which is annoyingly slow, compared to my other machines.
+
+This is the sample output of a binary built for AMD64 running Linux:
+
+#+begin_src sh
+  $ file ./email-random-linux-amd64
+  ./email-random-linux-amd64: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, Go BuildID=2xAAgiEbz0YaeTwVaLvY/TPl7Yke5m3o19Q8eJw4G/CoolvryF_ih8mxQTF0-9/heFRCu0IGe9Ljjo-wXRM, with debug_info, not stripped
+
+  $ ./email-random-linux-amd64 --version
+  refs/tags/v0.0.3-alpha 11a11b367ac315be12403463dea06f01ea234d3c
+#+end_src
