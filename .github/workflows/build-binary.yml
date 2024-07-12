@@ -26,6 +26,19 @@ jobs:
         run: go get ./...
       - name: Print the list of files
         run: ls -lsh .
-      - name: Print command used to build binaries
+      - name: Build binary for the required OS and architecture
         run: |
-          echo GOOS=${{ matrix.os-flavor }} GOARCH=${{ matrix.architecture }} go build -o $(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }} ${{ matrix.path-to-build }}
+          GOOS=${{ matrix.os-flavor }} GOARCH=${{ matrix.architecture }} go build -o $(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }} ${{ matrix.path-to-build }}
+      - name: Print the branch/tag name and the commit hash
+        run: |
+          echo "Ref: ${{ github.ref }}; Commit: ${{ github.after }}"
+      - name: Print file output of the binary file that was built
+        run: |
+          file ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+          sha256sum ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
+      - name: Upload binaries if a tag was pushed
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ./$(basename ${{ matrix.path-to-build }})-${{ matrix.os-flavor }}-${{ matrix.architecture }}
