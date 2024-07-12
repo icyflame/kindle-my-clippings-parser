@@ -3,7 +3,7 @@ name: Build Binary
 on:
   push:
     tags:
-      - v.*
+      - v*
 
 jobs:
   build:
