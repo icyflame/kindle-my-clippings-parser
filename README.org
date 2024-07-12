@@ -1,21 +1,23 @@
 #+TITLE: Parse My Clippings.txt from Kindle to YAML
 
-This works for all the variations that I have in my =My Clippings.txt= file as of now.
+This parser works for all the variations that I have in my =My Clippings.txt= file as of now.
 
 This project started as a replacement for https://github.com/icyflame/excerpts_bot in Golang. I
-rewrote the logic to parse the =My Clippings.txt= file inside a Kindle, rather than looking using
-the CSV files which can be emailed from a Kindle to onself. I recently started using Calibre and
-keeping the =My Clippings.txt= file in sync was easier.
+rewrote the logic to parse the =My Clippings.txt= file inside a Kindle, rather than using the CSV
+file containing highlights which can be emailed to onself. I recently started using Calibre and
+keeping the =My Clippings.txt= file in sync is far easier.
 
 Some additional advantages include the fact that I can now export clippings from books that I have
 not completed reading yet (such as collection of multiple novels from a single author, out of which
 I have completed reading only one novel), from books that are in the open domain and were not bought
-from the Amazon store, and from articles which were [[https://blog.siddharthkannan.in/technology/reading/books/2023/06/17/better-epub-files/][converted to Epub]] and added to my Kindle using
-Calibre.
+from the Amazon store, and from articles which were [[https://blog.siddharthkannan.in/technology/reading/books/2023/06/17/better-epub-files/][converted to Epub]] and imported into my Kindle
+using Calibre.
 
 After converting the clippings text file to YAML, I found many more opportunities for using it such
-as auto-generated summaries, identification of the best quotes in a book, generation of a list of
-references that were mentioned in the book which I want to investigate later, and so on.
+as generating summaries based on my notes, seeing the best quotes in a book, generating a list of
+references for future reading, and so on.
+
+*Verification:*
 
 #+begin_src sh
   # Find the number of clippings inside a My Clippings.txt file
@@ -257,12 +259,13 @@ summaries appended to each heading appropriately:
 		  Input file. Input file should be the YAML file that is output by the cmd/parse command in this project.
 	-verbose
 		  Enable verbose logging
+	-version
+		  Print the build version
 #+end_src
 
 This is a rewrite from scratch of the [[https://github.com/icyflame/excerpts_bot][excerpts_bot]] project; an excellent idea originally though up
 by [[https://github.com/nishnik/excerpts_bot][Nishant]]. While the original bot was written in Python and posted to Twitter, this version sends
-an e-mail (in my case) everyday and is running on [[https://www.raspberrypi.com/][a Raspberry Pi]] that is connected to my router at
-home.
+an e-mail everyday and is running on [[https://www.raspberrypi.com/][a Raspberry Pi]] that is connected to my router at home.
 
 * Environment
 
@@ -279,3 +282,11 @@ architecture. In case it doesn't work on some setup, pull requests improving sup
 I [[https://blog.siddharthkannan.in/2020/10/25/discovering-org-mode][use]] Emacs and Org mode as my primary editor and text file format for notes. So, the output of some
 commands is in this repository is in the [[https://orgmode.org/][Org mode]] format. Org mode is a readable text file format.
 You may use [[https://pandoc.org/][Pandoc]] to convert Org mode into Markdown or any other format of your choice.
+
+* Binaries
+
+There is a GitHub actions workflow set up in this repository which builds the ~./cmd/email-random~
+command, puts the output in an archive, and uploads it as a release artifact to the appropriate Git
+tag. The builds are performed for 3 architectures right now: amd64, arm (32 bit), and arm64. My
+motivation for this is to improve my personal setup to avoid having to download and build code on a
+Raspberry Pi which is annoyingly slow, compared to my other machines.
