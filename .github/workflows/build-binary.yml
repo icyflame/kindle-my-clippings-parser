@@ -1,6 +1,8 @@
 name: Build Binary
 
-on: [push]
+on:
+  push:
+    tags:
 
 jobs:
   build:
