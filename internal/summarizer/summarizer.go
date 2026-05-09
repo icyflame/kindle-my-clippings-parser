@@ -56,6 +56,13 @@ func (k *KindleCreator) Summarize(input parser.Clippings) (BookSummary, error) {
 		}
 
 		if strings.HasPrefix(clipping.Text, "#cs ") {
+			if len(summ.Chapters) == 0 {
+				k.Logger.Error("found chapter summary without chapter name",
+					zap.String("chapter summary", clipping.Text),
+					zap.Int("clipping location", clipping.LocationInSource.Start),
+				)
+				continue
+			}
 			summ.Chapters[len(summ.Chapters)-1].SummaryClippings = append(summ.Chapters[len(summ.Chapters)-1].SummaryClippings, clipping)
 		}
 	}

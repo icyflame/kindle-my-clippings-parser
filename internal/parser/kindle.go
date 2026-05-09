@@ -175,7 +175,8 @@ func (k *KindleClippings) Parse() (Clippings, error) {
 		}
 
 		if len(components) != 4 {
-			return nil, fmt.Errorf("incorrect clipping section found of length %d: %s", len(lineContent), string(lineContent))
+			k.logger.Debug("k.Parse > components", zap.ByteStrings("components", components))
+			return nil, fmt.Errorf("incorrect clipping section found of length %d with %d components: %s", len(lineContent), len(components), string(lineContent))
 		}
 
 		currentClipping := Clipping{}
@@ -351,6 +352,13 @@ func (k *KindleClippings) isException(comps [][]byte) bool {
 	if len(comps) == 2 &&
 		(bytes.HasPrefix(comps[1], []byte("- Your Bookmark")) ||
 			strings.Contains(string(comps[1]), `ブックマーク`)) {
+		return true
+	}
+
+	// Some clippings are empty. They have the first two lines, but don't have anything after
+	// that. We can consider them to be exceptions and simply ignore them.
+	if len(comps) == 2 &&
+		bytes.HasPrefix(comps[1], []byte("- Your Highlight on Location 1")) {
 		return true
 	}
 
